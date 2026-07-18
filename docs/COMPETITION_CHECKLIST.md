@@ -1,0 +1,21 @@
+# Competition checklist
+
+- [x] Working project
+- [x] Work & Productivity track selected
+- [x] Primary Codex task retained
+- [ ] `/feedback` Session ID obtained: `________________`
+- [x] Repository accessible to the owner
+- [x] README complete
+- [ ] Demo URL working: `________________`
+- [ ] GPT-5.6 live path verified with user-supplied credentials (implemented and documented)
+- [x] Demo fixture working
+- [x] Codex contribution documented
+- [x] Human decisions documented
+- [ ] Source review completed by a qualified reviewer
+- [x] Secrets removed from tracked project files
+- [x] Tests pass (22/22)
+- [x] Production build passes
+- [ ] Public YouTube video under three minutes: `________________`
+- [ ] Video contains voiceover and an English presentation
+- [x] Devpost description ready
+- [ ] Submission completed before 21 July 2026, 17:00 Pacific Time
