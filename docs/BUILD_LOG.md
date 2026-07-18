@@ -16,4 +16,4 @@
 - **Human decision:** preserve the narrow Serbian-seller / France B2C / Germany B2B scope and leave all canonical sources pending qualified review.
 - **Checks:** Prettier passed; ESLint passed; TypeScript passed; 22 Vitest tests passed across 4 files; Next.js 16.2.10 production build passed; browser smoke passed across both fixtures and all five views; 390 px viewport had no page-level horizontal overflow.
 - **Known limitations:** live OpenAI path was not called without user-supplied credentials; live VIES remains disabled pending a reviewer-confirmed full official operation URL; source review, Vercel deployment, public video, `/feedback` Session ID, and Devpost submission remain external user/release actions.
-- **Commit:** pending.
+- **Commit:** `c4df561`.
