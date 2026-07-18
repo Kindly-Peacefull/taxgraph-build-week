@@ -1,0 +1,138 @@
+[
+  {
+    "id": "R1",
+    "title": "B2C electronically supplied services are taxed where the EU consumer resides",
+    "jurisdiction": "EU/FR",
+    "topic": "VAT place of supply",
+    "scenario": "A (France B2C)",
+    "conditionSummary": "customer.type == consumer AND component.classification == ESS AND customer.country in EU",
+    "outputStatus": "Likely applicable",
+    "sourceIds": ["S1"],
+    "humanReviewStatus": "pending"
+  },
+  {
+    "id": "R2",
+    "title": "Human intervention is a classification signal, not an automatic ESS exclusion",
+    "jurisdiction": "EU",
+    "topic": "Service classification",
+    "scenario": "A + B (decomposition)",
+    "conditionSummary": "component.automationLevel != automated OR component.humanInvolvement == substantial -> flag likely non-ESS and require alternative-classification review; do not treat human involvement alone as conclusive",
+    "outputStatus": "Requires verification",
+    "sourceIds": ["S6", "S7"],
+    "humanReviewStatus": "pending"
+  },
+  {
+    "id": "R3",
+    "title": "Non-EU supplier of B2C ESS owes destination VAT from the first covered sale; non-Union OSS is optional",
+    "jurisdiction": "EU",
+    "topic": "VAT registration / reporting",
+    "scenario": "A (France B2C)",
+    "conditionSummary": "seller.country not in EU AND seller.euFixedEstablishment == false AND exists(component.classification == ESS AND customer.type == consumer AND customer.country in EU) -> destination VAT obligation; recommend either optional non-Union OSS or relevant local registrations; do not apply the intra-EU EUR 10,000 threshold",
+    "outputStatus": "Likely applicable",
+    "sourceIds": ["S9"],
+    "humanReviewStatus": "pending"
+  },
+  {
+    "id": "R4",
+    "title": "Customer-location evidence: normally two items of non-contradictory evidence",
+    "jurisdiction": "EU",
+    "topic": "Evidence",
+    "scenario": "A (France B2C)",
+    "conditionSummary": "R1 triggered -> request two non-contradictory items such as billing address, IP/geolocation, bank details, SIM or other commercial evidence; missing or conflicting evidence -> missing fact",
+    "outputStatus": "Requires verification",
+    "sourceIds": ["S8"],
+    "humanReviewStatus": "pending",
+    "notes": "Article 24b contains a narrow one-item exception for certain EU-established suppliers under the EUR 100,000 threshold; it does not fit the Serbian-supplier fixture."
+  },
+  {
+    "id": "R5",
+    "title": "French standard VAT rate 20% (illustrative only)",
+    "jurisdiction": "FR",
+    "topic": "VAT rate",
+    "scenario": "A (France B2C)",
+    "conditionSummary": "R1 triggered AND customer.country == FR -> show 20% as illustrative, never as a final liability calculation",
+    "outputStatus": "Illustrative rule only",
+    "sourceIds": ["S11"],
+    "humanReviewStatus": "pending"
+  },
+  {
+    "id": "R6",
+    "title": "B2B services under the general rule are supplied where the customer is established",
+    "jurisdiction": "EU/DE",
+    "topic": "VAT place of supply",
+    "scenario": "B (Germany B2B)",
+    "conditionSummary": "customer.type == business AND customer.country in EU AND service falls under the Article 44 general rule",
+    "outputStatus": "Likely applicable",
+    "sourceIds": ["S2"],
+    "humanReviewStatus": "pending"
+  },
+  {
+    "id": "R7",
+    "title": "Reverse charge: German business recipient accounts for VAT for an Article 44 service from Serbia",
+    "jurisdiction": "EU/DE",
+    "topic": "Reverse charge",
+    "scenario": "B (Germany B2B)",
+    "conditionSummary": "R6 triggered AND seller not established in Germany -> customer accounts for VAT under Article 196 and UStG Section 13b(2)(1) together with Section 13b(5); seller does not charge German VAT",
+    "outputStatus": "Likely applicable",
+    "sourceIds": ["S4", "S12"],
+    "humanReviewStatus": "pending"
+  },
+  {
+    "id": "R8",
+    "title": "Invoice requirements include customer VAT ID and the words 'Reverse charge'",
+    "jurisdiction": "EU",
+    "topic": "Invoicing",
+    "scenario": "B (Germany B2B)",
+    "conditionSummary": "R7 triggered -> invoice checklist includes customer VAT ID where required, the words 'Reverse charge', and no German VAT charged",
+    "outputStatus": "Likely applicable",
+    "sourceIds": ["S5"],
+    "humanReviewStatus": "pending"
+  },
+  {
+    "id": "R9",
+    "title": "Customer VAT ID must be validated through official VIES; an unvalidated ID downgrades the analysis",
+    "jurisdiction": "EU",
+    "topic": "Customer status",
+    "scenario": "B (Germany B2B)",
+    "conditionSummary": "customer.vatIdProvided == true AND viesValidation != valid -> Requires verification; viesValidation == valid -> supports, but does not alone conclusively establish, B2B treatment",
+    "outputStatus": "Requires verification",
+    "sourceIds": ["S10"],
+    "humanReviewStatus": "pending"
+  },
+  {
+    "id": "R10",
+    "title": "Human-delivered B2C components require separate place-of-supply review",
+    "jurisdiction": "EU",
+    "topic": "VAT place of supply",
+    "scenario": "A (decomposition contrast)",
+    "conditionSummary": "customer.type == consumer AND component.classification in [training, consulting, support-human] -> apply different place-of-supply analysis from ESS and flag for professional review",
+    "outputStatus": "Professional review required",
+    "sourceIds": ["S3"],
+    "humanReviewStatus": "pending",
+    "notes": "Article 45 is only the B2C general rule. Specific exceptions, including Article 59 for some non-EU customers, can override it; do not encode a final conclusion."
+  },
+  {
+    "id": "R11",
+    "title": "Serbian VAT place of supply follows the recipient for B2B services and for B2C electronically supplied services",
+    "jurisdiction": "RS",
+    "topic": "Seller-side VAT",
+    "scenario": "A + B",
+    "conditionSummary": "seller.country == RS AND ((customer.type == business AND Article 12 paragraph 4 general rule applies) OR (customer.type == consumer AND component.classification == ESS AND Article 12 paragraph 6 point 7 subpoint 12 applies)) -> place of supply is the recipient location; if S13 is unavailable, disable R11",
+    "outputStatus": "Requires verification",
+    "sourceIds": ["S13"],
+    "humanReviewStatus": "pending",
+    "notes": "S13 was found in the official consolidated Serbian VAT Act through amendment 109/25. While humanReviewStatus is pending, output remains draft/research-only and visibly marked Pending human review."
+  },
+  {
+    "id": "R12",
+    "title": "Software-rights transfer in Serbia-Germany B2B raises a withholding-tax and treaty-classification question",
+    "jurisdiction": "DE/RS",
+    "topic": "Withholding tax / treaty",
+    "scenario": "B (Germany B2B)",
+    "conditionSummary": "component.ipRightsTransferred == true -> raise a potential Article 13 royalty/WHT touchpoint; never classify software consideration or calculate withholding conclusively",
+    "outputStatus": "Professional review required",
+    "sourceIds": ["S14"],
+    "humanReviewStatus": "pending",
+    "notes": "The 1987 Germany-Yugoslavia treaty continues to apply to Serbia according to the official country page; the software-payment classification remains for professional review."
+  }
+]

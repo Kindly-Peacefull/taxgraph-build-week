@@ -1,0 +1,8 @@
+.next/
+coverage/
+node_modules/
+CODEX_PROMPT_FINAL.md
+data/sources/sources.json
+data/rules/rules.json
+docs/SOURCE_REVIEW.md
+pnpm-lock.yaml
