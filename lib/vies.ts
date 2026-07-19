@@ -1,5 +1,9 @@
 import { z } from "zod";
 import { viesCheckResultSchema, type ViesCheckResult } from "@/lib/domain";
+import { readBoundedInteger } from "@/lib/rate-limit";
+
+export const OFFICIAL_VIES_ENDPOINT_URL =
+  "https://ec.europa.eu/taxation_customs/vies/rest-api/check-vat-number";
 
 const viesResponseSchema = z.object({
   countryCode: z.string().optional(),
@@ -29,6 +33,36 @@ export function validateVatInput(countryCode: string, vatNumber: string) {
   return { countryCode: country, vatNumber: local };
 }
 
+export function resolveViesEndpoint(configuredEndpoint?: string) {
+  const candidate = configuredEndpoint?.trim() || OFFICIAL_VIES_ENDPOINT_URL;
+  const parsed = new URL(candidate);
+  const official = new URL(OFFICIAL_VIES_ENDPOINT_URL);
+  if (
+    parsed.protocol !== "https:" ||
+    parsed.hostname !== official.hostname ||
+    parsed.pathname.replace(/\/$/, "") !== official.pathname ||
+    parsed.username !== "" ||
+    parsed.password !== "" ||
+    parsed.port !== "" ||
+    parsed.search !== "" ||
+    parsed.hash !== ""
+  ) {
+    throw new Error("VIES_ENDPOINT_NOT_ALLOWED");
+  }
+  return parsed.toString();
+}
+
+export function classifyViesError(error: unknown) {
+  if (error instanceof z.ZodError) return "VIES_INVALID_RESPONSE";
+  if (error instanceof DOMException && error.name === "AbortError") {
+    return "VIES_TIMEOUT";
+  }
+  if (error instanceof Error && /^VIES_HTTP_\d{3}$/.test(error.message)) {
+    return error.message;
+  }
+  return "VIES_REQUEST_FAILED";
+}
+
 export async function checkViesLive(
   countryCode: string,
   vatNumber: string,
@@ -36,22 +70,41 @@ export async function checkViesLive(
   const checkedAt = new Date().toISOString();
   const safeVat = maskVatNumber(countryCode, vatNumber);
   const enabled = process.env.VIES_LIVE_ENABLED === "true";
-  const endpoint = process.env.VIES_ENDPOINT_URL?.trim();
 
-  if (!enabled || !endpoint) {
+  if (!enabled) {
     return viesCheckResultSchema.parse({
       countryCode,
       vatNumberMaskedOrSafe: safeVat,
       status: "unavailable",
       checkedAt,
       liveOrFixture: "unavailable",
-      errorCode: !enabled ? "LIVE_DISABLED" : "ENDPOINT_NOT_CONFIGURED",
+      errorCode: "LIVE_DISABLED",
       evidenceRef: "vies:unavailable",
     });
   }
 
   const input = validateVatInput(countryCode, vatNumber);
-  const timeout = Number.parseInt(process.env.VIES_TIMEOUT_MS ?? "5000", 10);
+  let endpoint: string;
+  try {
+    endpoint = resolveViesEndpoint(process.env.VIES_ENDPOINT_URL);
+  } catch {
+    return viesCheckResultSchema.parse({
+      countryCode: input.countryCode,
+      vatNumberMaskedOrSafe: safeVat,
+      status: "unavailable",
+      checkedAt,
+      liveOrFixture: "unavailable",
+      errorCode: "VIES_ENDPOINT_NOT_ALLOWED",
+      evidenceRef: `vies:unavailable:${checkedAt}`,
+    });
+  }
+
+  const timeout = readBoundedInteger(
+    process.env.VIES_TIMEOUT_MS,
+    5_000,
+    1_000,
+    15_000,
+  );
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeout);
 
@@ -86,7 +139,7 @@ export async function checkViesLive(
       status: "unavailable",
       checkedAt,
       liveOrFixture: "unavailable",
-      errorCode: error instanceof Error ? error.message : "VIES_UNKNOWN_ERROR",
+      errorCode: classifyViesError(error),
       evidenceRef: `vies:unavailable:${checkedAt}`,
     });
   } finally {

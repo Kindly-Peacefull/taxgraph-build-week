@@ -127,9 +127,9 @@ GPT is limited to:
 - missing facts and typed questions material to R1–R12;
 - contradictions and uncertainty.
 
-The route attempts a maximum of two validated calls. A refusal, invalid structured result, or API error is surfaced clearly; malformed data is never passed to the rule engine. The fixture remains available without a key.
+The route attempts a maximum of two validated calls, disables SDK-level retries, limits each call to a configurable output-token budget, and sends `store: false`. A refusal, invalid structured result, or API error is reduced to a safe error code; malformed data is never passed to the rule engine. The fixture remains available without a key.
 
-The live GPT route is implemented and build-tested but has **not** been called in this repository session because no user-supplied API key/model configuration was present.
+The live GPT route has been verified locally against the OpenAI API for France B2C, Germany B2B and a free-input transaction. All three returned HTTP 200, preserved authoritative form values, produced multi-component decomposition and returned typed missing-fact questions. No credential value or full model payload is logged. See [`docs/LIVE_INTEGRATION_REPORT.md`](docs/LIVE_INTEGRATION_REPORT.md).
 
 ## Deterministic engine role
 
@@ -171,7 +171,7 @@ The live adapter:
 - masks the number sent back to the browser;
 - preserves safe request metadata.
 
-Live VIES is disabled by default. The official OpenAPI confirms the `/check-vat-number` operation, but it does not provide a host in the schema. `VIES_ENDPOINT_URL` must therefore contain the full reviewer-confirmed official operation URL. Invalid or unavailable results create `Requires verification`; they do not turn a customer into B2C automatically.
+Live VIES is disabled by default. The current official [`swagger_publicVAT.yaml`](https://ec.europa.eu/assets/taxud/vow-information/swagger_publicVAT.yaml) confirms `POST /check-vat-number` and the operation URL has been verified as `https://ec.europa.eu/taxation_customs/vies/rest-api/check-vat-number`. That URL is the built-in default when live mode is explicitly enabled; an optional override is accepted only when it resolves to the same HTTPS host and path. Invalid or unavailable results create `Requires verification`; they do not turn a customer into B2C automatically.
 
 ## Local setup
 
@@ -195,18 +195,26 @@ Open [http://localhost:3000](http://localhost:3000). Leave the secret values bla
 ```text
 OPENAI_API_KEY=
 OPENAI_MODEL=
+OPENAI_MAX_OUTPUT_TOKENS=6000
+ANALYZE_RATE_LIMIT_PER_MINUTE=10
+ANALYZE_MAX_INPUT_CHARACTERS=16000
 NEXT_PUBLIC_DEMO_MODE=true
 VIES_LIVE_ENABLED=false
 VIES_ENDPOINT_URL=
 VIES_TIMEOUT_MS=5000
+VIES_RATE_LIMIT_PER_MINUTE=30
 ```
 
 - `OPENAI_API_KEY`: server-only API key. Never prefix it with `NEXT_PUBLIC_`.
 - `OPENAI_MODEL`: GPT-5.6-family model identifier confirmed for the deployment account.
+- `OPENAI_MAX_OUTPUT_TOKENS`: per-call Responses API output-token ceiling; clamped to 1,024–12,000.
+- `ANALYZE_RATE_LIMIT_PER_MINUTE`: per-client, per-instance analysis request ceiling; clamped to 1–120.
+- `ANALYZE_MAX_INPUT_CHARACTERS`: combined free-text and contract ceiling before any model call.
 - `NEXT_PUBLIC_DEMO_MODE`: documents fixture-first deployment intent.
 - `VIES_LIVE_ENABLED`: must be exactly `true` to permit the live adapter.
-- `VIES_ENDPOINT_URL`: full official `check-vat-number` operation URL confirmed during release review.
+- `VIES_ENDPOINT_URL`: optional exact official operation override; leave blank to use the verified built-in URL.
 - `VIES_TIMEOUT_MS`: server request timeout.
+- `VIES_RATE_LIMIT_PER_MINUTE`: per-client, per-instance VIES request ceiling; clamped to 1–300.
 
 Create `.env.local` yourself. Do not send API keys in chat and do not commit `.env.local`.
 
@@ -218,6 +226,8 @@ pnpm lint
 pnpm typecheck
 pnpm test:run
 pnpm build
+# with a local production/dev server already running:
+pnpm test:live-gpt
 ```
 
 Current verified local result:
@@ -225,11 +235,13 @@ Current verified local result:
 - Prettier: passed.
 - ESLint: passed.
 - TypeScript: passed.
-- Vitest: 22 tests passed in 4 test files.
+- Vitest: 36 tests passed in 6 test files.
 - Next.js production build: passed with static `/` and dynamic `/api/analyze` and `/api/vies` routes.
+- API integration: both routes returned the expected `200/200/429` or `400/400/429` sequence under a two-request test limit; live VIES returned a masked `invalid` result for a synthetic number and a forced endpoint mismatch returned safe `unavailable`.
+- Live GPT integration: France B2C, Germany B2B and free input returned HTTP 200 in live normalization mode; each produced multiple service components and typed missing-fact questions within the 6,000-token per-call ceiling.
 - Browser smoke: passed for fixture loading, Overview, 9-row Tax Touchpoints, Scenario Comparison, Checklist, Trace & Sources, source drawer, Germany VIES fixture metadata, missing-fact rerun, and a 390 px responsive viewport without page-level horizontal overflow.
 
-The tests cover schema failure, contract/form contradictions, user-answer provenance, only-R1–R12 loading, condition matching, unresolved facts, R11/S13 availability and pending gates, source authority, exact excerpts, altered quotes, unsourced conclusion blocking, rerun diffs, and VIES input safety.
+The tests cover schema failure, contract/form contradictions, user-answer provenance, only-R1–R12 loading, condition matching, unresolved facts, R11/S13 availability and pending gates, source authority, exact excerpts, altered quotes, unsourced conclusion blocking, rerun diffs, VIES input/endpoint/fallback safety, rate-limit windows and safe OpenAI error classification.
 
 ## Demo fixture instructions
 
@@ -245,15 +257,17 @@ The tests cover schema failure, contract/form contradictions, user-answer proven
 
 1. Import the GitHub repository into Vercel.
 2. Keep the detected Next.js preset and `pnpm build` command.
-3. Add `OPENAI_API_KEY` and `OPENAI_MODEL` as encrypted server environment variables for the live GPT path.
-4. Set `NEXT_PUBLIC_DEMO_MODE=true` so judges have a no-key path.
-5. Keep `VIES_LIVE_ENABLED=false` unless the complete official operation URL and production behavior have been reviewed.
-6. If approved, add `VIES_ENDPOINT_URL` and `VIES_TIMEOUT_MS` as server variables.
+3. In Vercel Firewall, add a fixed-window IP rule for `/api/analyze` before adding the key; 10 requests per 60 seconds matches the application default. Vercel documents WAF rate limiting as the global deployment layer.
+4. Add a separately scoped, valid `OPENAI_API_KEY` and `OPENAI_MODEL` as encrypted server environment variables for the live GPT path.
+5. Set `NEXT_PUBLIC_DEMO_MODE=true` so judges have a no-key path.
+6. Keep `VIES_LIVE_ENABLED=false` unless production use of the confirmed official operation has been approved.
 7. Deploy, run both fixture paths, and repeat the source/rerun checks on the public URL.
+
+The application limiter is deliberately dependency-free and protects each warm server instance. Vercel Functions can scale across instances, so the global WAF rule is a release gate for the billable GPT route, not an optional replacement for the code-level limiter. See [Vercel's official rate-limiting guide](https://vercel.com/kb/guide/add-rate-limiting-vercel).
 
 What becomes public: the UI bundle, the fourteen already supplied source excerpts/URLs, rule metadata, fixtures, and documentation. API keys, live server credentials, and pasted contract text must not become public.
 
-No deployment was performed in this session, and the demo URL remains intentionally blank in the competition documents.
+A fixture-only production deployment is live at [taxgraph-build-week.vercel.app](https://taxgraph-build-week.vercel.app). The Vercel project is connected to the GitHub repository, `NEXT_PUBLIC_DEMO_MODE=true` and `VIES_LIVE_ENABLED=false` are stored for Production and Preview, and no OpenAI credentials are configured. The public smoke test passed for both fixtures, all five analysis views, the exact S7 source drawer, the no-GPT rerun, Germany VIES fixture metadata, the graceful no-key error, and the disabled live VIES route.
 
 ## Codex contribution and human decisions
 
@@ -287,7 +301,7 @@ None of these are implemented in the MVP.
 - `docs/SOURCE_REVIEW.md` — qualified-review register.
 
 Repository: [Kindly-Peacefull/taxgraph-build-week](https://github.com/Kindly-Peacefull/taxgraph-build-week)  
-Demo URL: pending  
+Demo URL: [taxgraph-build-week.vercel.app](https://taxgraph-build-week.vercel.app)  
 Video URL: pending  
 Codex `/feedback` Session ID: pending user action
 
