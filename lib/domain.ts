@@ -286,6 +286,17 @@ export const taxTouchpointSchema = z.object({
   ]),
 });
 
+export const narrativeSentenceSchema = z.object({
+  text: z.string().min(1),
+  sourceIds: z.array(z.string().regex(/^S\d+$/)).min(1),
+});
+
+export const narrativeSummarySchema = z.object({
+  sentences: z.array(narrativeSentenceSchema).min(1),
+  generatedAt: z.string().datetime(),
+  model: z.string().min(1),
+});
+
 export const analysisResultSchema = z.object({
   input: scenarioInputSchema,
   normalizedTransaction: normalizedTransactionSchema,
@@ -319,6 +330,7 @@ export const analysisResultSchema = z.object({
   }),
   generatedAt: z.string().datetime(),
   fixtureOrLive: z.enum(["fixture", "live", "deterministic-fallback"]),
+  narrativeSummary: narrativeSummarySchema.optional(),
 });
 
 export const scenarioDiffSchema = z.object({
@@ -359,5 +371,7 @@ export type Claim = z.infer<typeof claimSchema>;
 export type TouchpointStatus = z.infer<typeof touchpointStatusSchema>;
 export type RuleEvaluation = z.infer<typeof ruleEvaluationSchema>;
 export type TaxTouchpoint = z.infer<typeof taxTouchpointSchema>;
+export type NarrativeSentence = z.infer<typeof narrativeSentenceSchema>;
+export type NarrativeSummary = z.infer<typeof narrativeSummarySchema>;
 export type AnalysisResult = z.infer<typeof analysisResultSchema>;
 export type ScenarioDiff = z.infer<typeof scenarioDiffSchema>;

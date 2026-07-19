@@ -1,5 +1,6 @@
 import type { AnalysisResult, FactProvenance } from "@/lib/domain";
 import { validateTouchpointClaims } from "@/lib/citations";
+import { validateNarrativePayload } from "@/lib/narrative";
 
 const researchBoundary =
   "TaxGraph is a research and scenario-mapping tool. It does not provide a final tax opinion, calculate definitive tax payable, or replace review by a qualified professional.";
@@ -40,6 +41,12 @@ export function validateAdviserBrief(analysis: AnalysisResult) {
   for (const touchpoint of analysis.taxTouchpoints) {
     validateTouchpointClaims(touchpoint, analysis.sourceReferences);
   }
+  if (analysis.narrativeSummary) {
+    validateNarrativePayload(
+      { sentences: analysis.narrativeSummary.sentences },
+      analysis.sourceReferences,
+    );
+  }
   return true;
 }
 
@@ -61,6 +68,7 @@ export function AdviserBrief({ analysis }: { analysis: AnalysisResult }) {
     timeStyle: "short",
     timeZone: "UTC",
   });
+  const narrativeOffset = analysis.narrativeSummary ? 1 : 0;
 
   return (
     <article className="adviser-brief" aria-label="TaxGraph Adviser Brief">
@@ -121,8 +129,22 @@ export function AdviserBrief({ analysis }: { analysis: AnalysisResult }) {
         </dl>
       </section>
 
+      {analysis.narrativeSummary && (
+        <section className="brief-section">
+          <h2>2. Narrative summary</h2>
+          {analysis.narrativeSummary.sentences.map((sentence, index) => (
+            <p key={`${analysis.narrativeSummary?.generatedAt}-${index}`}>
+              {sentence.text}{" "}
+              {sentence.sourceIds.map((sourceId) => (
+                <sup key={`${index}-${sourceId}`}>[{sourceId}]</sup>
+              ))}
+            </p>
+          ))}
+        </section>
+      )}
+
       <section className="brief-section">
-        <h2>2. Component decomposition</h2>
+        <h2>{2 + narrativeOffset}. Component decomposition</h2>
         <p className="brief-citation-note">
           Preliminary ESS signals use Article 7 and Annex II [S7] [S6]. All
           classifications remain subject to qualified review.
@@ -148,7 +170,7 @@ export function AdviserBrief({ analysis }: { analysis: AnalysisResult }) {
       </section>
 
       <section className="brief-section">
-        <h2>3. Tax touchpoints</h2>
+        <h2>{3 + narrativeOffset}. Tax touchpoints</h2>
         <table className="brief-table brief-touchpoints">
           <thead>
             <tr>
@@ -191,7 +213,7 @@ export function AdviserBrief({ analysis }: { analysis: AnalysisResult }) {
 
       <section className="brief-section brief-two-column">
         <div>
-          <h2>4. Missing facts</h2>
+          <h2>{4 + narrativeOffset}. Missing facts</h2>
           {transaction.missingFacts.length === 0 ? (
             <p>None recorded.</p>
           ) : (
@@ -203,7 +225,7 @@ export function AdviserBrief({ analysis }: { analysis: AnalysisResult }) {
           )}
         </div>
         <div>
-          <h2>5. Contradictions and provenance</h2>
+          <h2>{5 + narrativeOffset}. Contradictions and provenance</h2>
           {transaction.contradictions.length === 0 ? (
             <p>None recorded.</p>
           ) : (
@@ -228,7 +250,7 @@ export function AdviserBrief({ analysis }: { analysis: AnalysisResult }) {
       </section>
 
       <section className="brief-section">
-        <h2>6. Evidence checklist</h2>
+        <h2>{6 + narrativeOffset}. Evidence checklist</h2>
         <div className="brief-checklist">
           {evidenceSections.map(([title, items]) => (
             <section key={title}>
@@ -244,7 +266,7 @@ export function AdviserBrief({ analysis }: { analysis: AnalysisResult }) {
       </section>
 
       <section className="brief-section">
-        <h2>7. Questions for a qualified adviser</h2>
+        <h2>{7 + narrativeOffset}. Questions for a qualified adviser</h2>
         <ol>
           {adviserQuestions.map((question) => (
             <li key={question}>{question}</li>
@@ -253,7 +275,7 @@ export function AdviserBrief({ analysis }: { analysis: AnalysisResult }) {
       </section>
 
       <section className="brief-section">
-        <h2>8. Source register</h2>
+        <h2>{8 + narrativeOffset}. Source register</h2>
         <table className="brief-table brief-sources">
           <thead>
             <tr>

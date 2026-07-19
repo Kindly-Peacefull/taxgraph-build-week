@@ -51,6 +51,10 @@ a {
 button {
   color: inherit;
 }
+:where(button, a, input, select, textarea):focus-visible {
+  outline: 3px solid #d19a3f;
+  outline-offset: 3px;
+}
 main {
   min-height: 100vh;
 }
@@ -260,6 +264,14 @@ main {
   color: #aec3bb;
   font-size: 10px;
 }
+.messy-demo-button {
+  align-items: flex-start;
+}
+.messy-demo-button .flag-mark {
+  width: 37px;
+  flex-basis: 37px;
+  font-size: 7px;
+}
 .flag-mark {
   display: grid;
   place-items: center;
@@ -354,6 +366,16 @@ main {
   opacity: 0.6;
   cursor: wait;
 }
+.primary-button-ready {
+  animation: analyze-ready 1.4s ease-in-out infinite;
+  box-shadow: 0 0 0 4px rgba(209, 154, 63, 0.3);
+}
+@keyframes analyze-ready {
+  50% {
+    box-shadow: 0 0 0 7px rgba(209, 154, 63, 0.12);
+    transform: translateY(-1px);
+  }
+}
 .primary-button span {
   font-size: 18px;
 }
@@ -440,6 +462,43 @@ main {
   padding: 11px 13px;
   border-radius: 7px;
   font-size: 11px;
+}
+.narrative-card {
+  border-color: #b8c9c1;
+}
+.narrative-button {
+  padding: 8px 11px;
+  border: 1px solid var(--forest);
+  border-radius: 6px;
+  color: #fff;
+  background: var(--forest);
+  font-size: 9px;
+  font-weight: 800;
+  cursor: pointer;
+}
+.narrative-button:disabled {
+  cursor: default;
+  opacity: 0.65;
+}
+.narrative-copy {
+  padding-top: 13px;
+  border-top: 1px solid var(--line);
+}
+.narrative-copy p {
+  margin: 0 0 8px;
+  color: var(--ink-soft);
+  font-family: Georgia, serif;
+  font-size: 13px;
+  line-height: 1.65;
+}
+.narrative-placeholder,
+.narrative-error {
+  margin: 0;
+  color: var(--muted);
+  font-size: 10px;
+}
+.narrative-error {
+  color: var(--rose);
 }
 .error-banner {
   color: #6f302a;
@@ -923,6 +982,12 @@ tr:last-child td {
   font-weight: 800;
   text-transform: uppercase;
 }
+.coverage-note {
+  margin: 7px 0 0;
+  color: var(--muted);
+  font-size: 8px;
+  line-height: 1.4;
+}
 
 .comparison-hero {
   display: grid;
@@ -1389,6 +1454,12 @@ footer {
   font-size: 9px;
   letter-spacing: 0.05em;
   text-transform: uppercase;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .primary-button-ready {
+    animation: none;
+  }
 }
 
 @media (max-width: 1180px) {
