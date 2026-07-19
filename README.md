@@ -248,8 +248,8 @@ Current verified local result:
 - Prettier: passed.
 - ESLint: passed.
 - TypeScript: passed.
-- Vitest: 40 tests passed in 7 test files.
-- Next.js production build: passed with static `/` and dynamic `/api/analyze` and `/api/vies` routes.
+- Vitest: 45 tests passed in 9 test files.
+- Next.js production build: passed with static `/` and dynamic `/api/analyze`, `/api/explain`, and `/api/vies` routes.
 - API integration: both routes returned the expected `200/200/429` or `400/400/429` sequence under a two-request test limit; live VIES returned a masked `invalid` result for a synthetic number and a forced endpoint mismatch returned safe `unavailable`.
 - Live GPT integration: France B2C, Germany B2B and free input returned HTTP 200 in live normalization mode; each produced multiple service components and typed missing-fact questions within the 6,000-token per-call ceiling.
 - Browser smoke: passed for fixture loading, Overview, the 9-row sorted Tax Touchpoints matrix, readable Scenario Comparison component chips, Checklist, Trace & Sources, source drawer, Germany VIES fixture metadata, and the missing-fact rerun.

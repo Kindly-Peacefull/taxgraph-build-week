@@ -72,4 +72,26 @@ describe("adviser brief", () => {
       }
     }
   });
+
+  it("includes a validated narrative summary only when one is cached", () => {
+    const narrativeText = Array.from(
+      { length: 150 },
+      (_, index) => `summary${index + 1}`,
+    ).join(" ");
+    const analysis = {
+      ...fixtures[0].analysis,
+      narrativeSummary: {
+        sentences: [{ text: narrativeText, sourceIds: ["S1"] }],
+        generatedAt: "2026-07-20T00:00:00.000Z",
+        model: "configured-model",
+      },
+    };
+    const html = renderToStaticMarkup(
+      createElement(AdviserBrief, { analysis }),
+    );
+
+    expect(html).toContain("Narrative summary");
+    expect(html).toContain("summary150");
+    expect(html).toContain("[S1]");
+  });
 });

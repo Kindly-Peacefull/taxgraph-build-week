@@ -8,6 +8,11 @@ import type {
   SourceReference,
   TaxTouchpoint,
 } from "@/lib/domain";
+import { narrativeSummarySchema } from "@/lib/domain";
+import {
+  AnalyzeRateLimitError,
+  readAnalyzeResponse,
+} from "@/lib/analyze-client";
 import { compareAnalyses } from "@/lib/diff";
 import { evaluateTransaction } from "@/lib/engine";
 import {
@@ -62,6 +67,24 @@ function createBlankInput(): ScenarioInput {
     demoScenarioId: null,
   };
 }
+
+const messyLiveInput: ScenarioInput = {
+  structuredForm: {
+    sellerCountry: "RS",
+    customerCountry: "DE",
+    customerType: "business",
+    deliveryChannel: "negotiated-contract",
+    automationLevel: "medium",
+    humanInvolvement: "substantial",
+    recurring: true,
+    customerVatId: "DE811907980",
+    ipRightsTransferred: true,
+  },
+  freeTextDescription:
+    "We are a small Belgrade agency. A German manufacturing company wants our AI customer support assistant: we host the SaaS, do custom integration with their Zendesk and ERP, configure the bot, train their staff on-site in Munich for two days, and provide monthly human support. They gave VAT ID DE811907980 but we have not verified it yet. One-time setup fee plus a yearly licence, and they want exclusive rights to the fine-tuned bot model.",
+  contractExcerpt: "",
+  demoScenarioId: null,
+};
 
 function statusTone(status: string) {
   if (status === "Pending human review") return "status-pending";
@@ -233,15 +256,19 @@ function InputPanel({
   input,
   setInput,
   onLoad,
+  onLoadMessy,
   onAnalyze,
   analyzing,
+  analyzeHighlighted,
   progressMessage,
 }: {
   input: ScenarioInput;
   setInput: (value: ScenarioInput) => void;
   onLoad: (id: "france-b2c" | "germany-b2b") => void;
+  onLoadMessy: () => void;
   onAnalyze: () => void;
   analyzing: boolean;
+  analyzeHighlighted: boolean;
   progressMessage: string;
 }) {
   const form = input.structuredForm;
@@ -265,18 +292,42 @@ function InputPanel({
       </p>
 
       <div className="demo-buttons">
-        <button className="demo-button" onClick={() => onLoad("france-b2c")}>
+        <button
+          className="demo-button"
+          onClick={() => onLoad("france-b2c")}
+          aria-label="Load France B2C fixture"
+          type="button"
+        >
           <span className="flag-mark">FR</span>
           <span>
             <b>Load France B2C</b>
             <small>Consumer · automated subscription</small>
           </span>
         </button>
-        <button className="demo-button" onClick={() => onLoad("germany-b2b")}>
+        <button
+          className="demo-button"
+          onClick={() => onLoad("germany-b2b")}
+          aria-label="Load Germany B2B fixture"
+          type="button"
+        >
           <span className="flag-mark">DE</span>
           <span>
             <b>Load Germany B2B</b>
             <small>Business · custom integration</small>
+          </span>
+        </button>
+        <button
+          className="demo-button messy-demo-button"
+          onClick={onLoadMessy}
+          aria-label="Load messy real-world input without analyzing"
+          type="button"
+        >
+          <span className="flag-mark">LIVE</span>
+          <span>
+            <b>Load messy real-world input (live)</b>
+            <small>
+              Prefills a realistic messy deal — press Analyze to run live GPT
+            </small>
           </span>
         </button>
       </div>
@@ -418,9 +469,11 @@ function InputPanel({
         </label>
       </div>
       <button
-        className="primary-button"
+        className={`primary-button ${analyzeHighlighted ? "primary-button-ready" : ""}`}
         onClick={onAnalyze}
         disabled={analyzing}
+        aria-label="Analyze transaction with live GPT"
+        type="button"
       >
         {analyzing ? "Normalizing and decomposing…" : "Analyze transaction"}
         <span aria-hidden="true">→</span>
@@ -437,13 +490,19 @@ function InputPanel({
 function Overview({
   analysis,
   onAnswer,
+  onExplain,
   onOpenSource,
   changedIds,
+  explaining,
+  narrativeError,
 }: {
   analysis: AnalysisResult;
   onAnswer: (questionId: string, answer: string | boolean) => void;
+  onExplain: () => void;
   onOpenSource: (id: string) => void;
   changedIds: Set<string>;
+  explaining: boolean;
+  narrativeError: string | null;
 }) {
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const transaction = analysis.normalizedTransaction;
@@ -502,6 +561,53 @@ function Overview({
           {Array.from(changedIds).join(", ")}.
         </div>
       )}
+
+      <section className="content-card narrative-card">
+        <div className="section-heading">
+          <div>
+            <span className="eyebrow">Task D · on demand</span>
+            <h3>Narrative summary</h3>
+          </div>
+          <button
+            className="narrative-button"
+            type="button"
+            onClick={onExplain}
+            disabled={explaining || Boolean(analysis.narrativeSummary)}
+            aria-label="Explain this analysis with live GPT"
+          >
+            {analysis.narrativeSummary
+              ? "Narrative cached"
+              : explaining
+                ? "Writing summary…"
+                : "Explain this analysis"}
+          </button>
+        </div>
+        {analysis.narrativeSummary ? (
+          <div className="narrative-copy">
+            {analysis.narrativeSummary.sentences.map((sentence, index) => (
+              <p key={`${analysis.narrativeSummary?.generatedAt}-${index}`}>
+                {sentence.text}{" "}
+                {sentence.sourceIds.map((sourceId) => (
+                  <SourceFootnote
+                    sourceId={sourceId}
+                    onOpen={onOpenSource}
+                    key={`${index}-${sourceId}`}
+                  />
+                ))}
+              </p>
+            ))}
+          </div>
+        ) : narrativeError ? (
+          <p className="narrative-error" role="alert">
+            {narrativeError}
+          </p>
+        ) : (
+          <p className="narrative-placeholder">
+            Generate a 150–250 word, source-footnoted explanation from the
+            completed analysis. This is never started automatically.
+          </p>
+        )}
+      </section>
 
       <section className="content-card">
         <div className="section-heading">
@@ -601,6 +707,7 @@ function Overview({
                 {question.answerType === "single_select" ? (
                   <div className="answer-row">
                     <select
+                      aria-label={`Answer: ${question.prompt}`}
                       value={answers[question.id] ?? ""}
                       onChange={(event) =>
                         setAnswers({
@@ -622,16 +729,26 @@ function Overview({
                         onAnswer(question.id, answers[question.id])
                       }
                       disabled={!answers[question.id]}
+                      aria-label={`Apply answer and rerun: ${question.prompt}`}
+                      type="button"
                     >
                       Apply & rerun
                     </button>
                   </div>
                 ) : (
                   <div className="answer-row binary-row">
-                    <button onClick={() => onAnswer(question.id, true)}>
+                    <button
+                      onClick={() => onAnswer(question.id, true)}
+                      aria-label={`Answer yes: ${question.prompt}`}
+                      type="button"
+                    >
                       Yes
                     </button>
-                    <button onClick={() => onAnswer(question.id, false)}>
+                    <button
+                      onClick={() => onAnswer(question.id, false)}
+                      aria-label={`Answer no: ${question.prompt}`}
+                      type="button"
+                    >
                       No
                     </button>
                   </div>
@@ -708,6 +825,13 @@ function Touchpoints({
                     touchpoint={touchpoint}
                     onOpenSource={onOpenSource}
                   />
+                  {touchpoint.status ===
+                    "Not covered by the current MVP rule pack" && (
+                    <p className="coverage-note">
+                      No R1–R12 rule maps this topic for the current scenario
+                      facts.
+                    </p>
+                  )}
                 </td>
                 <td>
                   {touchpoint.missingFacts.length > 0 ? (
@@ -1073,8 +1197,11 @@ export function TaxGraphApp() {
   const [activeTab, setActiveTab] = useState<Tab>("Overview");
   const [selectedSourceId, setSelectedSourceId] = useState<string | null>(null);
   const [analyzing, setAnalyzing] = useState(false);
+  const [analyzeHighlighted, setAnalyzeHighlighted] = useState(false);
+  const [explaining, setExplaining] = useState(false);
   const [progressMessage, setProgressMessage] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [narrativeError, setNarrativeError] = useState<string | null>(null);
   const [rerunDiff, setRerunDiff] = useState<ScenarioDiff | null>(null);
 
   const selectedSource = useMemo(
@@ -1120,7 +1247,16 @@ export function TaxGraphApp() {
     setAnalysis(next);
     setRerunDiff(null);
     setError(null);
+    setNarrativeError(null);
+    setAnalyzeHighlighted(false);
     setActiveTab("Overview");
+  };
+
+  const loadMessyInput = () => {
+    setInput(messyLiveInput);
+    setError(null);
+    setNarrativeError(null);
+    setAnalyzeHighlighted(true);
   };
 
   const analyze = async () => {
@@ -1128,6 +1264,7 @@ export function TaxGraphApp() {
       "Sending the transaction for live normalization. This usually takes 30–45 seconds; the current fixture stays visible.",
     );
     setAnalyzing(true);
+    setAnalyzeHighlighted(false);
     setError(null);
     const controller = new AbortController();
     const clientTimeoutId = window.setTimeout(() => controller.abort(), 90_000);
@@ -1138,14 +1275,16 @@ export function TaxGraphApp() {
         body: JSON.stringify({ ...input, demoScenarioId: null }),
         signal: controller.signal,
       });
-      const payload = await response.json();
-      if (!response.ok) {
-        throw new Error(payload.error ?? "Analysis failed.");
-      }
+      const payload = await readAnalyzeResponse(response);
       setAnalysis(payload as AnalysisResult);
+      setNarrativeError(null);
       setRerunDiff(null);
       setActiveTab("Overview");
     } catch (caught) {
+      if (caught instanceof AnalyzeRateLimitError) {
+        setError(caught.message);
+        return;
+      }
       const message =
         caught instanceof DOMException && caught.name === "AbortError"
           ? "Live analysis stopped after 90 seconds. Please retry or use a demo fixture."
@@ -1157,6 +1296,41 @@ export function TaxGraphApp() {
       window.clearTimeout(clientTimeoutId);
       setAnalyzing(false);
       setProgressMessage("");
+    }
+  };
+
+  const explainAnalysis = async () => {
+    if (analysis.narrativeSummary || explaining) return;
+    const transactionId = analysis.normalizedTransaction.id;
+    setExplaining(true);
+    setNarrativeError(null);
+    const controller = new AbortController();
+    const clientTimeoutId = window.setTimeout(() => controller.abort(), 90_000);
+    try {
+      const response = await fetch("/api/explain", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(analysis),
+        signal: controller.signal,
+      });
+      const payload = await readAnalyzeResponse(response);
+      const narrativeSummary = narrativeSummarySchema.parse(payload);
+      setAnalysis((current) =>
+        current.normalizedTransaction.id === transactionId
+          ? { ...current, narrativeSummary }
+          : current,
+      );
+    } catch (caught) {
+      const message =
+        caught instanceof DOMException && caught.name === "AbortError"
+          ? "The narrative explanation stopped after 90 seconds. The analysis remains available."
+          : caught instanceof Error
+            ? caught.message
+            : "The narrative explanation failed. The analysis remains available.";
+      setNarrativeError(message);
+    } finally {
+      window.clearTimeout(clientTimeoutId);
+      setExplaining(false);
     }
   };
 
@@ -1213,8 +1387,10 @@ export function TaxGraphApp() {
           input={input}
           setInput={setInput}
           onLoad={loadDemo}
+          onLoadMessy={loadMessyInput}
           onAnalyze={analyze}
           analyzing={analyzing}
+          analyzeHighlighted={analyzeHighlighted}
           progressMessage={progressMessage}
         />
         <div className="analysis-workspace">
@@ -1233,6 +1409,7 @@ export function TaxGraphApp() {
                 className="export-brief-button"
                 type="button"
                 onClick={() => window.print()}
+                aria-label="Export current analysis as an adviser brief"
               >
                 Export adviser brief
               </button>
@@ -1246,13 +1423,19 @@ export function TaxGraphApp() {
               </div>
             </div>
           </div>
-          {error && <div className="error-banner">{error}</div>}
+          {error && (
+            <div className="error-banner" role="alert">
+              {error}
+            </div>
+          )}
           <nav className="tab-list" aria-label="Analysis views">
             {tabs.map((tab) => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
                 aria-current={activeTab === tab ? "page" : undefined}
+                aria-label={`Open ${tab} view`}
+                type="button"
               >
                 {tab}
               </button>
@@ -1263,8 +1446,11 @@ export function TaxGraphApp() {
               <Overview
                 analysis={analysis}
                 onAnswer={applyAnswer}
+                onExplain={explainAnalysis}
                 onOpenSource={setSelectedSourceId}
                 changedIds={changedIds}
+                explaining={explaining}
+                narrativeError={narrativeError}
               />
             )}
             {activeTab === "Tax Touchpoints" && (
