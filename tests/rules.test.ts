@@ -76,6 +76,24 @@ describe("R1-R12 deterministic engine", () => {
     );
   });
 
+  it("keeps the France reporting route verifiable when EU establishment is unknown", () => {
+    const transaction = createFranceTransaction();
+    transaction.seller.euFixedEstablishment = null;
+
+    const result = evaluateTransaction(
+      franceInput,
+      transaction,
+      createFranceViesResult(),
+    );
+    const reporting = result.taxTouchpoints.find(
+      (item) => item.id === "registration-reporting",
+    );
+
+    expect(getRule(result, "R3")?.triggered).toBe(false);
+    expect(reporting?.status).toBe("Requires verification");
+    expect(reporting?.sourceIds).toContain("S9");
+  });
+
   it("disables R11 and prevents it from firing when S13 is unavailable", () => {
     const sources: SourceReference[] = loadSourcePack().map((source) =>
       source.id === "S13"

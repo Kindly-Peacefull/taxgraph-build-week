@@ -418,7 +418,9 @@ export function evaluateTransaction(
   const classificationSources = sourceIds("R2");
   const placeSources = sourceIds("R1", "R6", "R10", "R11");
   const reverseSources = sourceIds("R7");
-  const registrationSources = sourceIds("R3");
+  const registrationSources = r1Triggered
+    ? (evaluationMap.get("R3")?.sourceIds ?? [])
+    : [];
   const evidenceSources = sourceIds("R4");
   const invoiceSources = sourceIds("R8");
   const treatySources = sourceIds("R12");
@@ -580,7 +582,9 @@ export function evaluateTransaction(
         topic: "Registration / reporting route",
         jurisdiction: "EU / FR",
         desiredStatus: r1Triggered
-          ? "Likely applicable"
+          ? evaluationMap.get("R3")?.triggered
+            ? "Likely applicable"
+            : "Requires verification"
           : "Not covered by the current MVP rule pack",
         claims: r1Triggered
           ? [

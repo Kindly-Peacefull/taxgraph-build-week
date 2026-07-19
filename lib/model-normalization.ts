@@ -37,7 +37,11 @@ export const modelNormalizationPayloadSchema = z.object({
       explanation: z.string(),
     }),
   ),
-  missingFactQuestions: z.array(missingFactQuestionSchema),
+  missingFactQuestions: z.array(
+    missingFactQuestionSchema.extend({
+      options: z.array(z.string()),
+    }),
+  ),
 });
 
 export type ModelNormalizationPayload = z.infer<
@@ -240,6 +244,8 @@ Return only schema-constrained facts and service components supported by the inp
 The structured form is authoritative: preserve its values and report contract conflicts instead of resolving them.
 Extract contract facts with a character range or short exact fragment as sourcePointer.
 Create only typed missing-fact questions that could affect R1-R12 or the checklist.
+Question focus: for a French consumer, identify whether two independent and non-conflicting customer-location evidence items are known; for a German business, identify missing customer VAT/VIES, taxable-person, business-location and fixed-establishment facts; for software rights, identify the reproduction, modification, exclusivity and beneficial-ownership facts; for mixed services, identify unresolved automation, human-delivery and physical-presence facts.
+For every material unresolved focus, include both a concise missingFacts entry and a typed missingFactQuestions item. Do not ask for facts that the input already supplies.
 Do not state tax law, rates, obligations, treaty conclusions, or create rule/source IDs.
 Do not decide single or composite supply treatment.
 Use empty arrays when the input does not support a field.`;

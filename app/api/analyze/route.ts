@@ -14,19 +14,62 @@ import {
   modelNormalizationPayloadSchema,
   normalizationSystemPrompt,
 } from "@/lib/model-normalization";
+import {
+  classifyOpenAIError,
+  createCodedOpenAIError,
+  shouldRetryOpenAIError,
+} from "@/lib/openai-safety";
+import {
+  consumeRateLimit,
+  rateLimitHeaders,
+  readBoundedInteger,
+  requestClientIdentifier,
+} from "@/lib/rate-limit";
 import { checkViesLive } from "@/lib/vies";
 
 export const runtime = "nodejs";
 
 export async function POST(request: Request) {
-  const parsedInput = scenarioInputSchema.safeParse(await request.json());
+  const requestsPerMinute = readBoundedInteger(
+    process.env.ANALYZE_RATE_LIMIT_PER_MINUTE,
+    10,
+    1,
+    120,
+  );
+  const rateLimit = consumeRateLimit(
+    "analyze",
+    requestClientIdentifier(request),
+    requestsPerMinute,
+  );
+  const headers: Record<string, string> = rateLimitHeaders(rateLimit);
+  if (!rateLimit.allowed) {
+    return NextResponse.json(
+      {
+        error:
+          "Too many analysis requests. Try again after the rate-limit window resets.",
+      },
+      { status: 429, headers },
+    );
+  }
+
+  let requestPayload: unknown;
+  try {
+    requestPayload = await request.json();
+  } catch {
+    return NextResponse.json(
+      { error: "The request body must be valid JSON." },
+      { status: 400, headers },
+    );
+  }
+
+  const parsedInput = scenarioInputSchema.safeParse(requestPayload);
   if (!parsedInput.success) {
     return NextResponse.json(
       {
         error: "The transaction input is invalid.",
         issues: parsedInput.error.issues,
       },
-      { status: 400 },
+      { status: 400, headers },
     );
   }
 
@@ -38,6 +81,7 @@ export async function POST(request: Request) {
         createFranceTransaction(),
         createFranceViesResult(),
       ),
+      { headers },
     );
   }
   if (input.demoScenarioId === "germany-b2b") {
@@ -47,6 +91,24 @@ export async function POST(request: Request) {
         createGermanyTransaction(),
         createGermanyViesResult(),
       ),
+      { headers },
+    );
+  }
+
+  const maximumInputCharacters = readBoundedInteger(
+    process.env.ANALYZE_MAX_INPUT_CHARACTERS,
+    16_000,
+    1_000,
+    100_000,
+  );
+  const modelInputCharacters =
+    input.freeTextDescription.length + input.contractExcerpt.length;
+  if (modelInputCharacters > maximumInputCharacters) {
+    return NextResponse.json(
+      {
+        error: `The combined free-text and contract input exceeds the ${maximumInputCharacters}-character limit.`,
+      },
+      { status: 413, headers },
     );
   }
 
@@ -59,17 +121,28 @@ export async function POST(request: Request) {
           "Live normalization requires OPENAI_API_KEY and OPENAI_MODEL in the server environment.",
         fallbackAvailable: true,
       },
-      { status: 503 },
+      { status: 503, headers },
     );
   }
 
-  const client = new OpenAI({ apiKey });
+  const maxOutputTokens = readBoundedInteger(
+    process.env.OPENAI_MAX_OUTPUT_TOKENS,
+    6_000,
+    1_024,
+    12_000,
+  );
+  headers["X-TaxGraph-Max-Output-Tokens"] = String(maxOutputTokens);
+
+  const client = new OpenAI({ apiKey, maxRetries: 0 });
   let lastError: unknown;
 
   for (let attempt = 1; attempt <= 2; attempt += 1) {
     try {
       const response = await client.responses.parse({
         model,
+        max_output_tokens: maxOutputTokens,
+        reasoning: { effort: "low" },
+        store: false,
         input: [
           { role: "system", content: normalizationSystemPrompt },
           {
@@ -89,15 +162,48 @@ export async function POST(request: Request) {
         },
       });
 
-      if (!response.output_parsed) {
-        throw new Error("The model did not return a parsed structured output.");
+      if (response.usage) {
+        headers["X-TaxGraph-Input-Tokens"] = String(
+          response.usage.input_tokens,
+        );
+        headers["X-TaxGraph-Output-Tokens"] = String(
+          response.usage.output_tokens,
+        );
+        headers["X-TaxGraph-Total-Tokens"] = String(
+          response.usage.total_tokens,
+        );
       }
-      const transaction = mergeModelPayload(
-        input,
-        response.output_parsed,
-        model,
-        attempt,
-      );
+
+      if (!response.output_parsed) {
+        if (response.status === "incomplete") {
+          throw createCodedOpenAIError(
+            response.incomplete_details?.reason === "max_output_tokens"
+              ? "OPENAI_MAX_OUTPUT_TOKENS_REACHED"
+              : "OPENAI_INCOMPLETE_OUTPUT",
+            false,
+          );
+        }
+        const refused = response.output.some(
+          (item) =>
+            item.type === "message" &&
+            item.content.some((content) => content.type === "refusal"),
+        );
+        throw createCodedOpenAIError(
+          refused ? "OPENAI_REFUSAL" : "OPENAI_NO_PARSED_OUTPUT",
+          !refused,
+        );
+      }
+      let transaction;
+      try {
+        transaction = mergeModelPayload(
+          input,
+          response.output_parsed,
+          model,
+          attempt,
+        );
+      } catch {
+        throw createCodedOpenAIError("OPENAI_NORMALIZATION_MERGE_ERROR", true);
+      }
       const viesCheck =
         transaction.customer.country === "DE" && transaction.customer.vatId
           ? await checkViesLive("DE", transaction.customer.vatId)
@@ -110,11 +216,20 @@ export async function POST(request: Request) {
               evidenceRef: "vies:not-checked",
             });
 
-      return NextResponse.json(
-        evaluateTransaction(input, transaction, viesCheck),
-      );
+      let result;
+      try {
+        result = evaluateTransaction(input, transaction, viesCheck);
+      } catch {
+        throw createCodedOpenAIError(
+          "OPENAI_DETERMINISTIC_EVALUATION_ERROR",
+          false,
+        );
+      }
+
+      return NextResponse.json(result, { headers });
     } catch (error) {
       lastError = error;
+      if (!shouldRetryOpenAIError(error)) break;
     }
   }
 
@@ -122,9 +237,9 @@ export async function POST(request: Request) {
     {
       error:
         "Live structured normalization failed after two validated attempts. No malformed result was used.",
-      detail: lastError instanceof Error ? lastError.message : "Unknown error",
+      errorCode: classifyOpenAIError(lastError),
       fallbackAvailable: true,
     },
-    { status: 502 },
+    { status: 502, headers },
   );
 }
