@@ -14,10 +14,11 @@ const viesResponseSchema = z.object({
 });
 
 export function maskVatNumber(countryCode: string, vatNumber: string) {
+  const country = countryCode.toUpperCase();
   const clean = vatNumber.replace(/\s+/g, "").toUpperCase();
-  const local = clean.startsWith(countryCode) ? clean.slice(2) : clean;
-  if (local.length <= 4) return `${countryCode}${"•".repeat(local.length)}`;
-  return `${countryCode}${local.slice(0, 2)}${"•".repeat(local.length - 4)}${local.slice(-2)}`;
+  const local = clean.startsWith(country) ? clean.slice(2) : clean;
+  if (local.length <= 4) return `${country}${"•".repeat(local.length)}`;
+  return `${country}${local.slice(0, 2)}${"•".repeat(local.length - 4)}${local.slice(-2)}`;
 }
 
 export function validateVatInput(countryCode: string, vatNumber: string) {
@@ -68,12 +69,26 @@ export async function checkViesLive(
   vatNumber: string,
 ): Promise<ViesCheckResult> {
   const checkedAt = new Date().toISOString();
-  const safeVat = maskVatNumber(countryCode, vatNumber);
+  let input: ReturnType<typeof validateVatInput>;
+  try {
+    input = validateVatInput(countryCode, vatNumber);
+  } catch {
+    return viesCheckResultSchema.parse({
+      countryCode: countryCode.toUpperCase(),
+      vatNumberMaskedOrSafe: maskVatNumber(countryCode, vatNumber),
+      status: "invalid_format",
+      checkedAt,
+      liveOrFixture: "unavailable",
+      errorCode: "VIES_INVALID_FORMAT",
+      evidenceRef: `vies:not-sent:${checkedAt}`,
+    });
+  }
+  const safeVat = maskVatNumber(input.countryCode, input.vatNumber);
   const enabled = process.env.VIES_LIVE_ENABLED === "true";
 
   if (!enabled) {
     return viesCheckResultSchema.parse({
-      countryCode,
+      countryCode: input.countryCode,
       vatNumberMaskedOrSafe: safeVat,
       status: "unavailable",
       checkedAt,
@@ -83,7 +98,6 @@ export async function checkViesLive(
     });
   }
 
-  const input = validateVatInput(countryCode, vatNumber);
   let endpoint: string;
   try {
     endpoint = resolveViesEndpoint(process.env.VIES_ENDPOINT_URL);

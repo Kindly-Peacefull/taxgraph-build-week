@@ -100,6 +100,7 @@ for (const scenario of scenarios) {
   }
 
   const transaction = payload.normalizedTransaction;
+  const timeoutMs = Number(response.headers.get("x-taxgraph-timeout-ms"));
   assert(
     transaction?.normalizationMetadata?.mode === "live",
     `${scenario.name}: not live`,
@@ -120,6 +121,34 @@ for (const scenario of scenarios) {
     transaction.missingFactQuestions.length > 0,
     `${scenario.name}: no missing-fact questions`,
   );
+  const knownSourceTypes = transaction.knownFacts.map(
+    (fact) => fact.provenance.sourceType,
+  );
+  assert(
+    knownSourceTypes.includes("form"),
+    `${scenario.name}: authoritative form provenance is missing`,
+  );
+  assert(
+    knownSourceTypes.includes("free-text"),
+    `${scenario.name}: free-text provenance is missing`,
+  );
+  if (scenario.input.contractExcerpt.trim().length === 0) {
+    assert(
+      !knownSourceTypes.includes("contract"),
+      `${scenario.name}: empty contract produced contract provenance`,
+    );
+  }
+  const contradictionKeys = transaction.contradictions.map((item) =>
+    JSON.stringify([item.factPath, item.firstValue, item.secondValue]),
+  );
+  assert(
+    new Set(contradictionKeys).size === contradictionKeys.length,
+    `${scenario.name}: duplicate contradictions were returned`,
+  );
+  assert(
+    timeoutMs >= 60_000 && timeoutMs <= 90_000,
+    `${scenario.name}: server timeout header is outside the allowed range`,
+  );
 
   results.push({
     scenario: scenario.name,
@@ -134,6 +163,7 @@ for (const scenario of scenarios) {
       (item) => item.factPath,
     ),
     contradictionCount: transaction.contradictions.length,
+    provenanceSourceTypes: Array.from(new Set(knownSourceTypes)),
     viesStatus: payload.viesCheck.status,
     limits: {
       requestsPerMinute: Number(response.headers.get("ratelimit-limit")),
@@ -141,6 +171,7 @@ for (const scenario of scenarios) {
       maxOutputTokens: Number(
         response.headers.get("x-taxgraph-max-output-tokens"),
       ),
+      timeoutMs,
     },
     usage: {
       inputTokens: Number(response.headers.get("x-taxgraph-input-tokens")),

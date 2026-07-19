@@ -11,6 +11,14 @@ import {
 export const modelNormalizationPayloadSchema = z.object({
   summary: z.string(),
   serviceComponents: z.array(serviceComponentSchema).min(1),
+  extractedFreeTextFacts: z.array(
+    z.object({
+      path: z.string(),
+      value: z.string(),
+      sourcePointer: z.string(),
+      confidence: z.number().min(0).max(1),
+    }),
+  ),
   extractedContractFacts: z.array(
     z.object({
       path: z.string(),
@@ -72,6 +80,41 @@ function formValueForPath(input: ScenarioInput, path: string) {
   return undefined;
 }
 
+function uniqueExtractedFacts<T extends { path: string; value: string }>(
+  facts: T[],
+) {
+  const seen = new Set<string>();
+  return facts.filter((fact) => {
+    const key = `${fact.path}\u0000${fact.value.trim()}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+function comparableFactValue(path: string, value: unknown) {
+  const text = String(value).trim();
+  if (path === "customer.vatId") {
+    return text.replace(/[^A-Z0-9]/gi, "").toUpperCase();
+  }
+  if (path === "customer.country") {
+    const countryAliases: Record<string, string> = {
+      france: "FR",
+      germany: "DE",
+      serbia: "RS",
+    };
+    return countryAliases[text.toLowerCase()] ?? text.toUpperCase();
+  }
+  if (path === "customer.type") {
+    const customerTypeAliases: Record<string, string> = {
+      "private consumer": "consumer",
+      "business customer": "business",
+    };
+    return customerTypeAliases[text.toLowerCase()] ?? text.toLowerCase();
+  }
+  return text.toLowerCase();
+}
+
 export function mergeModelPayload(
   input: ScenarioInput,
   rawPayload: unknown,
@@ -108,7 +151,22 @@ export function mergeModelPayload(
     throw new Error("Customer country is required for a safe analysis.");
   }
 
-  const contractFacts = payload.extractedContractFacts.map((fact) => ({
+  const freeTextFacts = uniqueExtractedFacts(
+    input.freeTextDescription.trim().length > 0
+      ? payload.extractedFreeTextFacts
+      : [],
+  ).map((fact) => ({
+    path: fact.path,
+    value: fact.value,
+    label: `Description fact: ${fact.path}`,
+    provenance: provenance("free-text", fact.sourcePointer),
+  }));
+  const contractFactPayload = uniqueExtractedFacts(
+    input.contractExcerpt.trim().length > 0
+      ? payload.extractedContractFacts
+      : [],
+  );
+  const contractFacts = contractFactPayload.map((fact) => ({
     path: fact.path,
     value: fact.value,
     label: `Contract fact: ${fact.path}`,
@@ -121,26 +179,32 @@ export function mergeModelPayload(
     provenance: provenance("model-inference", fact.reason),
   }));
 
-  const contradictions = [
-    ...payload.contradictions.map((item, index) => ({
-      id: `model-contradiction-${index + 1}`,
-      factPath: item.factPath,
-      firstValue: item.formValue,
-      secondValue: item.contractValue,
-      firstProvenance: {
-        sourceType: "form" as const,
-        sourcePointer: `structuredForm.${item.factPath}`,
-        capturedAt: formCapturedAt,
-      },
-      secondProvenance: provenance("contract", item.sourcePointer),
-      explanation: item.explanation,
-    })),
-    ...payload.extractedContractFacts.flatMap((fact, index) => {
+  const contradictionCandidates = [
+    ...(input.contractExcerpt.trim().length > 0
+      ? payload.contradictions.map((item) => ({
+          factPath: item.factPath,
+          firstValue: item.formValue,
+          secondValue: item.contractValue,
+          firstProvenance: {
+            sourceType: "form" as const,
+            sourcePointer: `structuredForm.${item.factPath}`,
+            capturedAt: formCapturedAt,
+          },
+          secondProvenance: provenance("contract", item.sourcePointer),
+          explanation: item.explanation,
+        }))
+      : []),
+    ...contractFactPayload.flatMap((fact) => {
       const value = formValueForPath(input, fact.path);
-      if (value === undefined || String(value) === fact.value) return [];
+      if (
+        value === undefined ||
+        comparableFactValue(fact.path, value) ===
+          comparableFactValue(fact.path, fact.value)
+      ) {
+        return [];
+      }
       return [
         {
-          id: `detected-contradiction-${index + 1}`,
           factPath: fact.path,
           firstValue: value,
           secondValue: fact.value,
@@ -156,10 +220,46 @@ export function mergeModelPayload(
       ];
     }),
   ];
+  const seenContradictions = new Set<string>();
+  const contradictions = contradictionCandidates
+    .filter((item) => {
+      const firstValue = comparableFactValue(item.factPath, item.firstValue);
+      const secondValue = comparableFactValue(item.factPath, item.secondValue);
+      if (firstValue === secondValue) return false;
+      const key = [item.factPath, firstValue, secondValue].join("\u0000");
+      if (seenContradictions.has(key)) return false;
+      seenContradictions.add(key);
+      return true;
+    })
+    .map((item, index) => ({
+      ...item,
+      id: `contract-form-contradiction-${index + 1}`,
+    }));
 
   const type = input.structuredForm.customerType;
   const country = input.structuredForm.customerCountry;
   const vatId = input.structuredForm.customerVatId;
+  const knownFacts = [
+    ...formFacts.map(([path, value, label]) => ({
+      path,
+      value,
+      label,
+      provenance: {
+        sourceType: "form" as const,
+        sourcePointer: `structuredForm.${path}`,
+        capturedAt: formCapturedAt,
+      },
+    })),
+    ...freeTextFacts,
+    ...contractFacts,
+  ];
+  const provenanceByPath = new Map<string, FactProvenance[]>();
+  for (const fact of knownFacts) {
+    provenanceByPath.set(fact.path, [
+      ...(provenanceByPath.get(fact.path) ?? []),
+      fact.provenance,
+    ]);
+  }
 
   return normalizedTransactionSchema.parse({
     id: `live-${Date.now()}`,
@@ -200,36 +300,12 @@ export function mergeModelPayload(
       intermediary: false,
       contractExcerptProvided: input.contractExcerpt.trim().length > 0,
     },
-    knownFacts: [
-      ...formFacts.map(([path, value, label]) => ({
-        path,
-        value,
-        label,
-        provenance: {
-          sourceType: "form" as const,
-          sourcePointer: `structuredForm.${path}`,
-          capturedAt: formCapturedAt,
-        },
-      })),
-      ...contractFacts,
-    ],
+    knownFacts,
     inferredFacts,
     missingFacts: payload.missingFacts,
     contradictions,
     missingFactQuestions: payload.missingFactQuestions,
-    provenance: Object.fromEntries([
-      ...formFacts.map(([path]) => [
-        path,
-        [
-          {
-            sourceType: "form" as const,
-            sourcePointer: `structuredForm.${path}`,
-            capturedAt: formCapturedAt,
-          },
-        ],
-      ]),
-      ...contractFacts.map((fact) => [fact.path, [fact.provenance]]),
-    ]),
+    provenance: Object.fromEntries(provenanceByPath),
     normalizationMetadata: {
       mode: "live",
       model,
@@ -242,7 +318,9 @@ export function mergeModelPayload(
 export const normalizationSystemPrompt = `You normalize a single pre-sale transaction for TaxGraph.
 Return only schema-constrained facts and service components supported by the input.
 The structured form is authoritative: preserve its values and report contract conflicts instead of resolving them.
-Extract contract facts with a character range or short exact fragment as sourcePointer.
+Put facts supported by freeTextDescription only in extractedFreeTextFacts, with a character range or short exact fragment from freeTextDescription as sourcePointer.
+Put facts supported by contractExcerpt only in extractedContractFacts, with a character range or short exact fragment from contractExcerpt as sourcePointer.
+Never copy a structured-form value into either extracted array unless the same fact is explicitly stated in that corresponding text. When contractExcerpt is empty, extractedContractFacts and contradictions must be empty.
 Create only typed missing-fact questions that could affect R1-R12 or the checklist.
 Question focus: for a French consumer, identify whether two independent and non-conflicting customer-location evidence items are known; for a German business, identify missing customer VAT/VIES, taxable-person, business-location and fixed-establishment facts; for software rights, identify the reproduction, modification, exclusivity and beneficial-ownership facts; for mixed services, identify unresolved automation, human-delivery and physical-presence facts.
 For every material unresolved focus, include both a concise missingFacts entry and a typed missingFactQuestions item. Do not ask for facts that the input already supplies.
