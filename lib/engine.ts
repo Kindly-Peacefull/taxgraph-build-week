@@ -114,6 +114,17 @@ function serviceClaim(id: string, text: string, evidenceRefs: string[]): Claim {
   return { id, text, sourceIds: [], evidenceRefs, unsourced: true };
 }
 
+function userAnsweredBoolean(
+  transaction: NormalizedTransaction,
+  path: string,
+): boolean | undefined {
+  const fact = transaction.knownFacts.findLast(
+    (item) =>
+      item.path === path && item.provenance.sourceType === "user-answered",
+  );
+  return typeof fact?.value === "boolean" ? fact.value : undefined;
+}
+
 function evaluation(
   ruleId: RuleId,
   conditions: string[],
@@ -194,8 +205,12 @@ export function evaluateTransaction(
   const locationEvidenceSufficient =
     transaction.customer.locationEvidence.length >= 2 &&
     locationCountries.size === 1;
+  const userConfirmedVatVerification =
+    userAnsweredBoolean(transaction, "customer.vatIdVerified") === true;
   const viesSupportsBusiness =
-    viesCheck.status === "valid" || viesCheck.status === "fixture";
+    viesCheck.status === "valid" ||
+    viesCheck.status === "fixture" ||
+    userConfirmedVatVerification;
   const rightsTransferred = transaction.serviceComponents.some(
     (item) => item.ipRightsTransferred === true,
   );
@@ -204,10 +219,12 @@ export function evaluateTransaction(
   const r6Unresolved =
     isGermanBusiness &&
     (transaction.customer.taxablePersonActingAsSuch === null ||
+      transaction.customer.businessLocation !== "DE" ||
       !transaction.customer.fixedEstablishmentCleared);
   const r6Triggered =
     isGermanBusiness &&
     transaction.customer.taxablePersonActingAsSuch === true &&
+    transaction.customer.businessLocation === "DE" &&
     transaction.customer.fixedEstablishmentCleared;
   const r7Triggered =
     r6Triggered &&
@@ -440,11 +457,17 @@ export function evaluateTransaction(
           ? [
               claim(
                 "customer-status-vies",
-                viesSupportsBusiness
-                  ? "The recorded VIES result supports, but does not by itself conclusively establish, the business-customer analysis."
-                  : "The customer VAT ID requires verification; an invalid or unavailable result does not automatically make the transaction B2C.",
+                userConfirmedVatVerification
+                  ? "The user confirmed that the recorded VAT ID was verified; retain timestamped verification evidence before relying on the business-customer analysis."
+                  : viesSupportsBusiness
+                    ? "The recorded VIES result supports, but does not by itself conclusively establish, the business-customer analysis."
+                    : "The customer VAT ID requires verification; an invalid or unavailable result does not automatically make the transaction B2C.",
                 ["S10"],
-                [viesCheck.evidenceRef],
+                [
+                  userConfirmedVatVerification
+                    ? "user-answered:customer.vatIdVerified"
+                    : viesCheck.evidenceRef,
+                ],
               ),
             ]
           : [

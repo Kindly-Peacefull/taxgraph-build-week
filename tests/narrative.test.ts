@@ -5,7 +5,12 @@ import {
   createFranceViesResult,
   franceInput,
 } from "@/lib/fixtures";
-import { buildNarrativeInput, validateNarrativePayload } from "@/lib/narrative";
+import {
+  buildNarrativeInput,
+  narrativeInputSourceIds,
+  rebuildTrustedAnalysis,
+  validateNarrativePayload,
+} from "@/lib/narrative";
 
 const enoughWords = Array.from(
   { length: 150 },
@@ -15,18 +20,51 @@ const enoughWords = Array.from(
 describe("narrative citation gate", () => {
   it("rejects an unknown source ID", () => {
     expect(() =>
-      validateNarrativePayload({
-        sentences: [{ text: enoughWords, sourceIds: ["S999"] }],
-      }),
+      validateNarrativePayload(
+        {
+          sentences: [{ text: enoughWords, sourceIds: ["S999"] }],
+        },
+        new Set(["S1"]),
+      ),
     ).toThrow(/unknown source/i);
   });
 
   it("rejects a sentence without a source ID", () => {
     expect(() =>
-      validateNarrativePayload({
-        sentences: [{ text: enoughWords, sourceIds: [] }],
-      }),
+      validateNarrativePayload(
+        {
+          sentences: [{ text: enoughWords, sourceIds: [] }],
+        },
+        new Set(["S1"]),
+      ),
     ).toThrow();
+  });
+
+  it("rejects a canonical source that is irrelevant to the current analysis", () => {
+    expect(() =>
+      validateNarrativePayload(
+        { sentences: [{ text: enoughWords, sourceIds: ["S14"] }] },
+        new Set(["S1"]),
+      ),
+    ).toThrow(/not present in the current analysis/i);
+  });
+
+  it("rejects a forged claim even when it names a canonical source", () => {
+    const analysis = evaluateTransaction(
+      franceInput,
+      createFranceTransaction(),
+      createFranceViesResult(),
+    );
+    const forged = structuredClone(analysis);
+    const claim = forged.taxTouchpoints
+      .flatMap((touchpoint) => touchpoint.claims)
+      .find((item) => item.sourceIds.length > 0);
+    expect(claim).toBeDefined();
+    claim!.sourceIds = ["S14"];
+
+    expect(() => rebuildTrustedAnalysis(forged)).toThrow(
+      /do not match the deterministic server analysis/i,
+    );
   });
 
   it("builds only the four canonical Task D input groups", () => {
@@ -36,6 +74,7 @@ describe("narrative citation gate", () => {
       createFranceViesResult(),
     );
     const input = buildNarrativeInput(analysis);
+    expect(narrativeInputSourceIds(input).size).toBeGreaterThan(0);
 
     expect(Object.keys(input).sort()).toEqual([
       "missingFacts",

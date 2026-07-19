@@ -1,12 +1,15 @@
 import { z } from "zod";
 import {
-  missingFactQuestionSchema,
   normalizedTransactionSchema,
   serviceComponentSchema,
   type FactProvenance,
   type NormalizedTransaction,
   type ScenarioInput,
 } from "@/lib/domain";
+import {
+  createMissingFactQuestion,
+  modelMissingFactQuestionSchema,
+} from "@/lib/missing-facts";
 
 export const modelNormalizationPayloadSchema = z.object({
   summary: z.string(),
@@ -45,11 +48,7 @@ export const modelNormalizationPayloadSchema = z.object({
       explanation: z.string(),
     }),
   ),
-  missingFactQuestions: z.array(
-    missingFactQuestionSchema.extend({
-      options: z.array(z.string()),
-    }),
-  ),
+  missingFactQuestions: z.array(modelMissingFactQuestionSchema),
 });
 
 export type ModelNormalizationPayload = z.infer<
@@ -115,6 +114,29 @@ function comparableFactValue(path: string, value: unknown) {
   return text.toLowerCase();
 }
 
+function applyStructuredFormComponentFacts(
+  input: ScenarioInput,
+  components: ModelNormalizationPayload["serviceComponents"],
+) {
+  const form = input.structuredForm;
+  return components.map((component) => ({
+    ...component,
+    automationLevel:
+      form.automationLevel === "unknown"
+        ? component.automationLevel
+        : form.automationLevel,
+    humanInvolvement:
+      form.humanInvolvement === "unknown"
+        ? component.humanInvolvement
+        : form.humanInvolvement,
+    recurring: form.recurring,
+    ipRightsTransferred:
+      form.ipRightsTransferred === null
+        ? component.ipRightsTransferred
+        : form.ipRightsTransferred,
+  }));
+}
+
 export function mergeModelPayload(
   input: ScenarioInput,
   rawPayload: unknown,
@@ -144,6 +166,21 @@ export function mergeModelPayload(
       "commercialArrangement.recurring",
       input.structuredForm.recurring,
       "Recurring payment",
+    ],
+    [
+      "serviceComponents.automationLevel",
+      input.structuredForm.automationLevel,
+      "Transaction-level automation",
+    ],
+    [
+      "serviceComponents.humanInvolvement",
+      input.structuredForm.humanInvolvement,
+      "Transaction-level human involvement",
+    ],
+    [
+      "serviceComponents.ipRightsTransferred",
+      input.structuredForm.ipRightsTransferred,
+      "Software / IP rights indicated",
     ],
   ] as const;
 
@@ -272,9 +309,8 @@ export function mergeModelPayload(
     customer: {
       country,
       type,
-      taxablePersonActingAsSuch:
-        type === "business" ? true : type === "consumer" ? false : null,
-      businessLocation: type === "business" ? country : null,
+      taxablePersonActingAsSuch: type === "consumer" ? false : null,
+      businessLocation: null,
       fixedEstablishmentCountry: null,
       fixedEstablishmentCleared: false,
       vatId,
@@ -287,7 +323,10 @@ export function mergeModelPayload(
       standardPackage:
         input.structuredForm.deliveryChannel === "online-subscription",
     },
-    serviceComponents: payload.serviceComponents,
+    serviceComponents: applyStructuredFormComponentFacts(
+      input,
+      payload.serviceComponents,
+    ),
     paymentFlow: {
       payer:
         type === "business" ? `${country} business` : `${country} consumer`,
@@ -304,7 +343,9 @@ export function mergeModelPayload(
     inferredFacts,
     missingFacts: payload.missingFacts,
     contradictions,
-    missingFactQuestions: payload.missingFactQuestions,
+    missingFactQuestions: payload.missingFactQuestions.map(
+      createMissingFactQuestion,
+    ),
     provenance: Object.fromEntries(provenanceByPath),
     normalizationMetadata: {
       mode: "live",
@@ -322,8 +363,9 @@ Put facts supported by freeTextDescription only in extractedFreeTextFacts, with 
 Put facts supported by contractExcerpt only in extractedContractFacts, with a character range or short exact fragment from contractExcerpt as sourcePointer.
 Never copy a structured-form value into either extracted array unless the same fact is explicitly stated in that corresponding text. When contractExcerpt is empty, extractedContractFacts and contradictions must be empty.
 Create only typed missing-fact questions that could affect R1-R12 or the checklist.
+For each question, choose only the schema's factPath; ordinary code assigns answerType, options and affected rule IDs after your output is parsed.
 Question focus: for a French consumer, identify whether two independent and non-conflicting customer-location evidence items are known; for a German business, identify missing customer VAT/VIES, taxable-person, business-location and fixed-establishment facts; for software rights, identify the reproduction, modification, exclusivity and beneficial-ownership facts; for mixed services, identify unresolved automation, human-delivery and physical-presence facts.
 For every material unresolved focus, include both a concise missingFacts entry and a typed missingFactQuestions item. Do not ask for facts that the input already supplies.
-Do not state tax law, rates, obligations, treaty conclusions, or create rule/source IDs.
+Do not state tax law, rates, obligations, treaty conclusions, answer types, options, or rule/source IDs.
 Do not decide single or composite supply treatment.
 Use empty arrays when the input does not support a field.`;

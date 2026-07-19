@@ -37,9 +37,9 @@ export function readBoundedInteger(
 }
 
 export function requestClientIdentifier(request: Request) {
-  const forwardedFor = request.headers.get("x-forwarded-for");
+  const vercelForwardedFor = request.headers.get("x-vercel-forwarded-for");
   const candidate =
-    forwardedFor?.split(",")[0]?.trim() ||
+    vercelForwardedFor?.split(",")[0]?.trim() ||
     request.headers.get("x-real-ip")?.trim() ||
     "unknown-client";
   return candidate.slice(0, 128);

@@ -96,9 +96,28 @@ export const contradictionSchema = z.object({
   explanation: z.string().min(1),
 });
 
+export const answerableFactPathSchema = z.enum([
+  "customer.vatId",
+  "customer.vatIdVerified",
+  "customer.taxablePersonActingAsSuch",
+  "customer.businessLocation",
+  "customer.fixedEstablishmentCountry",
+  "customer.fixedEstablishmentCleared",
+  "customer.locationEvidence",
+  "seller.germanEstablishment",
+  "serviceComponents.automationLevel",
+  "serviceComponents.humanInvolvement",
+  "serviceComponents.physicalPresenceRequired",
+  "serviceComponents.ipRightsTransferred",
+  "serviceComponents.reproductionRights",
+  "serviceComponents.modificationRights",
+  "serviceComponents.exclusiveRights",
+  "serviceComponents.beneficialOwner",
+]);
+
 export const missingFactQuestionSchema = z.object({
   id: z.string().min(1),
-  factPath: z.string().min(1),
+  factPath: answerableFactPathSchema,
   prompt: z.string().min(1),
   answerType: z.enum(["boolean", "single_select", "short_text"]),
   options: z.array(z.string()).optional(),
@@ -152,7 +171,7 @@ export const viesCheckResultSchema = z.object({
 export const scenarioInputSchema = z.object({
   structuredForm: z.object({
     sellerCountry: z.literal("RS"),
-    customerCountry: z.string().length(2),
+    customerCountry: z.string().length(2).max(2),
     customerType: z.enum(["consumer", "business", "unknown"]),
     deliveryChannel: z.enum([
       "online-subscription",
@@ -162,11 +181,11 @@ export const scenarioInputSchema = z.object({
     automationLevel: z.enum(["high", "medium", "low", "unknown"]),
     humanInvolvement: z.enum(["minimal", "limited", "substantial", "unknown"]),
     recurring: z.boolean(),
-    customerVatId: z.string(),
+    customerVatId: z.string().max(20),
     ipRightsTransferred: z.boolean().nullable(),
   }),
-  freeTextDescription: z.string(),
-  contractExcerpt: z.string(),
+  freeTextDescription: z.string().max(16_000),
+  contractExcerpt: z.string().max(16_000),
   demoScenarioId: z.enum(["france-b2c", "germany-b2b"]).nullable(),
 });
 
@@ -362,6 +381,7 @@ export type SourceReference = z.infer<typeof sourceReferenceSchema>;
 export type TaxRule = z.infer<typeof taxRuleSchema>;
 export type FactProvenance = z.infer<typeof factProvenanceSchema>;
 export type FactRecord = z.infer<typeof factRecordSchema>;
+export type AnswerableFactPath = z.infer<typeof answerableFactPathSchema>;
 export type MissingFactQuestion = z.infer<typeof missingFactQuestionSchema>;
 export type ServiceComponent = z.infer<typeof serviceComponentSchema>;
 export type ViesCheckResult = z.infer<typeof viesCheckResultSchema>;

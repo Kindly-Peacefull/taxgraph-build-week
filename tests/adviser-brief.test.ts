@@ -30,11 +30,12 @@ const fixtures = [
     ),
   },
 ];
+const exportedAt = "2026-07-20T14:37:00.000Z";
 
 describe("adviser brief", () => {
   it.each(fixtures)("renders the $label fixture", ({ label, analysis }) => {
     const html = renderToStaticMarkup(
-      createElement(AdviserBrief, { analysis }),
+      createElement(AdviserBrief, { analysis, exportedAt }),
     );
 
     expect(html).toContain("TaxGraph Adviser Brief");
@@ -45,7 +46,10 @@ describe("adviser brief", () => {
 
   it("contains the research disclaimer and complete source register", () => {
     const html = renderToStaticMarkup(
-      createElement(AdviserBrief, { analysis: fixtures[0].analysis }),
+      createElement(AdviserBrief, {
+        analysis: fixtures[0].analysis,
+        exportedAt,
+      }),
     );
 
     expect(html).toContain("This brief is not a tax opinion");
@@ -87,11 +91,26 @@ describe("adviser brief", () => {
       },
     };
     const html = renderToStaticMarkup(
-      createElement(AdviserBrief, { analysis }),
+      createElement(AdviserBrief, { analysis, exportedAt }),
     );
 
     expect(html).toContain("Narrative summary");
     expect(html).toContain("summary150");
     expect(html).toContain("[S1]");
+  });
+
+  it("uses export time and sentence-case component labels", () => {
+    const analysis = {
+      ...fixtures[0].analysis,
+      generatedAt: "2026-07-20T00:00:00.000Z",
+    };
+    const html = renderToStaticMarkup(
+      createElement(AdviserBrief, { analysis, exportedAt }),
+    );
+
+    expect(html).toContain("20 Jul 2026, 14:37 UTC");
+    expect(html).not.toContain("20 Jul 2026, 00:00 UTC");
+    expect(html).toContain("SaaS access");
+    expect(html).not.toContain("Saas Access");
   });
 });

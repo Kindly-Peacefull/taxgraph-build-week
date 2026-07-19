@@ -222,7 +222,7 @@ VIES_RATE_LIMIT_PER_MINUTE=30
 - `OPENAI_MAX_OUTPUT_TOKENS`: per-call Responses API output-token ceiling; clamped to 1,024–12,000.
 - `OPENAI_TIMEOUT_MS`: shared deadline for all route-level model attempts; clamped to 60,000–90,000 ms.
 - `ANALYZE_RATE_LIMIT_PER_MINUTE`: per-client, per-instance analysis request ceiling; clamped to 1–120.
-- `ANALYZE_MAX_INPUT_CHARACTERS`: combined free-text and contract ceiling before any model call.
+- `ANALYZE_MAX_INPUT_CHARACTERS`: total ceiling across structured and free-text transaction strings before any model call.
 - `NEXT_PUBLIC_DEMO_MODE`: documents fixture-first deployment intent.
 - `VIES_LIVE_ENABLED`: must be exactly `true` to permit the live adapter.
 - `VIES_ENDPOINT_URL`: optional exact official operation override; leave blank to use the verified built-in URL.
@@ -248,13 +248,13 @@ Current verified local result:
 - Prettier: passed.
 - ESLint: passed.
 - TypeScript: passed.
-- Vitest: 45 tests passed in 9 test files.
+- Vitest: 61 tests passed in 12 test files.
 - Next.js production build: passed with static `/` and dynamic `/api/analyze`, `/api/explain`, and `/api/vies` routes.
 - API integration: both routes returned the expected `200/200/429` or `400/400/429` sequence under a two-request test limit; live VIES returned a masked `invalid` result for a synthetic number and a forced endpoint mismatch returned safe `unavailable`.
 - Live GPT integration: France B2C, Germany B2B and free input returned HTTP 200 in live normalization mode; each produced multiple service components and typed missing-fact questions within the 6,000-token per-call ceiling.
 - Browser smoke: passed for fixture loading, Overview, the 9-row sorted Tax Touchpoints matrix, readable Scenario Comparison component chips, Checklist, Trace & Sources, source drawer, Germany VIES fixture metadata, and the missing-fact rerun.
 
-The tests cover schema failure, separated form/free-text/contract provenance, duplicate contract/form contradictions, user-answer provenance, only-R1–R12 loading, condition matching, unresolved facts, R11/S13 availability and pending gates, source authority, exact excerpts, altered quotes, unsourced conclusion blocking, rerun diffs, malformed VIES input, endpoint/fallback safety, rate-limit windows and safe OpenAI timeout/error classification.
+The tests cover schema failure, separated form/free-text/contract provenance, duplicate contract/form contradictions, generic typed missing-fact answers, user-answer provenance, R6/R7/R9 and R12 reruns, engine-owned rule IDs, form-priority component fields, only-R1–R12 loading, condition matching, unresolved facts, R11/S13 availability and pending gates, source authority, exact excerpts, altered quotes, unsourced conclusion blocking, forged narrative claims, current-analysis source gating, request size/origin/content-type guards, malformed VIES input, endpoint/fallback safety, shared rate-limit windows and safe OpenAI timeout/error classification.
 
 ## Demo fixture instructions
 
@@ -297,6 +297,16 @@ See `docs/DECISIONS.md` and `docs/BUILD_LOG.md`.
 TaxGraph does not promise the lowest tax, recommend hiding income or ownership, suggest sham entities or fabricated expenses, support evasion, generate a final personalized tax opinion, file a return, guarantee compliance, or predict enforcement.
 
 The source pack is research material pending qualified human review. Model output can contain factual classification mistakes despite schema adherence. VIES availability and a valid VAT ID do not alone prove every B2B condition. Single/composite supply treatment, fixed establishments, software-rights classification, withholding procedure, and all special rules outside R1–R12 remain professional-review matters.
+
+### Known implementation limitations at submission
+
+- The dependency-free rate limiter is in memory and protects one warm function instance; only `/api/analyze` has the available deployment-level WAF rate-limit rule on the free plan.
+- The VIES adapter currently supports the customer-country prefix used by this MVP and does not resolve a conflicting VAT country prefix as a separate jurisdictional fact.
+- Provenance pointers are preserved and displayed, but character ranges and short fragments are not independently verified against the submitted text after model normalization.
+- A narrative request can finish after the user has changed workspace state; the client discards a result for a different transaction, but there is no server-side cancellation or cross-tab coordination.
+- Workspace branch labels use the MVP's France-consumer / Germany-business heuristic and are not a general B2C/B2B legal classifier.
+- The current PostCSS advisory is accepted as low risk for this submission because the application does not process user-supplied CSS; the dependency is intentionally not upgraded during feature freeze.
+- The CSP retains `unsafe-inline` for styles required by the current Next.js rendering setup; a nonce-based CSP redesign is deferred.
 
 ## Roadmap only
 

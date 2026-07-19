@@ -1,9 +1,27 @@
-import type { AnalysisResult, FactProvenance } from "@/lib/domain";
+import type {
+  AnalysisResult,
+  FactProvenance,
+  ServiceComponent,
+} from "@/lib/domain";
 import { validateTouchpointClaims } from "@/lib/citations";
-import { validateNarrativePayload } from "@/lib/narrative";
+import {
+  buildNarrativeInput,
+  narrativeInputSourceIds,
+  validateNarrativePayload,
+} from "@/lib/narrative";
 
 const researchBoundary =
   "TaxGraph is a research and scenario-mapping tool. It does not provide a final tax opinion, calculate definitive tax payable, or replace review by a qualified professional.";
+
+const componentCategoryLabels: Record<ServiceComponent["category"], string> = {
+  "saas-access": "SaaS access",
+  configuration: "Configuration",
+  "custom-integration": "Custom integration",
+  hosting: "Hosting",
+  "human-support": "Human support",
+  training: "Training",
+  "software-licence": "Software licence",
+};
 
 function countryName(code: string) {
   if (code === "RS") return "Serbia";
@@ -42,15 +60,23 @@ export function validateAdviserBrief(analysis: AnalysisResult) {
     validateTouchpointClaims(touchpoint, analysis.sourceReferences);
   }
   if (analysis.narrativeSummary) {
+    const narrativeInput = buildNarrativeInput(analysis);
     validateNarrativePayload(
       { sentences: analysis.narrativeSummary.sentences },
+      narrativeInputSourceIds(narrativeInput),
       analysis.sourceReferences,
     );
   }
   return true;
 }
 
-export function AdviserBrief({ analysis }: { analysis: AnalysisResult }) {
+export function AdviserBrief({
+  analysis,
+  exportedAt,
+}: {
+  analysis: AnalysisResult;
+  exportedAt: string;
+}) {
   validateAdviserBrief(analysis);
 
   const transaction = analysis.normalizedTransaction;
@@ -63,7 +89,7 @@ export function AdviserBrief({ analysis }: { analysis: AnalysisResult }) {
   const evidenceSections = Object.entries(analysis.checklist).filter(
     ([title]) => title !== "Questions for a qualified adviser",
   );
-  const generatedAt = new Date(analysis.generatedAt).toLocaleString("en-GB", {
+  const formattedExportedAt = new Date(exportedAt).toLocaleString("en-GB", {
     dateStyle: "medium",
     timeStyle: "short",
     timeZone: "UTC",
@@ -81,7 +107,7 @@ export function AdviserBrief({ analysis }: { analysis: AnalysisResult }) {
           <div>
             <dt>Date / time</dt>
             <dd>
-              <time dateTime={analysis.generatedAt}>{generatedAt} UTC</time>
+              <time dateTime={exportedAt}>{formattedExportedAt} UTC</time>
             </dd>
           </div>
           <div>
@@ -154,7 +180,7 @@ export function AdviserBrief({ analysis }: { analysis: AnalysisResult }) {
             const classification = classifications.get(component.id);
             return (
               <section key={component.id}>
-                <h3>{component.category.replaceAll("-", " ")}</h3>
+                <h3>{componentCategoryLabels[component.category]}</h3>
                 <strong>
                   {classification?.result ?? "Requires verification"}
                 </strong>

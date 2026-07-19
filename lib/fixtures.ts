@@ -8,6 +8,7 @@ import {
   type ServiceComponent,
   type ViesCheckResult,
 } from "@/lib/domain";
+import { createMissingFactQuestion } from "@/lib/missing-facts";
 
 const fixtureTime = "2026-07-19T00:00:00.000Z";
 
@@ -202,16 +203,13 @@ export function createFranceTransaction(): NormalizedTransaction {
     missingFacts: ["A second non-conflicting customer-location evidence item"],
     contradictions: [],
     missingFactQuestions: [
-      {
+      createMissingFactQuestion({
         id: "fr-location-evidence",
         factPath: "customer.locationEvidence",
         prompt: "Which second customer-location evidence item is available?",
-        answerType: "single_select",
-        options: ["ip_address", "bank_location", "sim_country", "other"],
-        affectedRuleIds: ["R4"],
         reason:
           "The residual Article 24b presumption may require two non-conflicting evidence items.",
-      },
+      }),
     ],
     provenance: Object.fromEntries(
       facts.map(([path]) => [path, [fixtureProvenance(`france-b2c:${path}`)]]),
@@ -315,16 +313,14 @@ export function createGermanyTransaction(): NormalizedTransaction {
     ],
     contradictions: [],
     missingFactQuestions: [
-      {
+      createMissingFactQuestion({
         id: "de-rights-scope",
-        factPath: "serviceComponents.software-licence.ipRightsTransferred",
+        factPath: "serviceComponents.ipRightsTransferred",
         prompt:
           "Does the customer receive reproduction or modification rights?",
-        answerType: "boolean",
-        affectedRuleIds: ["R12"],
         reason:
           "The exact rights and payment structure affect the treaty-classification review question.",
-      },
+      }),
     ],
     provenance: Object.fromEntries(
       facts.map(([path]) => [path, [fixtureProvenance(`germany-b2b:${path}`)]]),
