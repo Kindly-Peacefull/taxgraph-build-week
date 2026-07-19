@@ -61,5 +61,5 @@ The MVP supports only a Serbian seller and France B2C / Germany B2B demo scenari
 - The Germany VIES result is visibly labelled as a fixture and includes safe audit metadata.
 - The server-only OpenAI Structured Outputs path is live in production; France B2C, Germany B2B and free input each returned HTTP 200 in live normalization mode.
 - The official VIES `POST /check-vat-number` operation is confirmed and enabled in production. A synthetic number returned a masked live `invalid` result; the fixture and unavailable states remain distinct.
-- The test suite currently passes 46/46 tests across 9 files, and the Next.js production build passes.
+- The test suite currently passes 61/61 tests across 12 files, and the Next.js production build passes.
 - Source excerpts are exact and all remain pending qualified human review.

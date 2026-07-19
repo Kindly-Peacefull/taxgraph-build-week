@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 import {
   buildNarrativeInput,
   narrativeModelPayloadSchema,
+  narrativeInputSourceIds,
   narrativeSystemPrompt,
   validateNarrativePayload,
 } from "@/lib/narrative";
@@ -19,6 +20,7 @@ import {
   readBoundedInteger,
   requestClientIdentifier,
 } from "@/lib/rate-limit";
+import { readGuardedJson, RequestGuardError } from "@/lib/request-guards";
 
 export const runtime = "nodejs";
 
@@ -53,11 +55,17 @@ export async function POST(request: Request) {
 
   let requestPayload: unknown;
   try {
-    requestPayload = await request.json();
-  } catch {
+    requestPayload = await readGuardedJson(request, 256 * 1024);
+  } catch (error) {
+    const status = error instanceof RequestGuardError ? error.status : 400;
     return NextResponse.json(
-      { error: "The request body must be valid JSON." },
-      { status: 400, headers },
+      {
+        error:
+          error instanceof RequestGuardError
+            ? error.message
+            : "The request body must be valid JSON.",
+      },
+      { status, headers },
     );
   }
 
@@ -152,7 +160,10 @@ export async function POST(request: Request) {
 
       let payload;
       try {
-        payload = validateNarrativePayload(response.output_parsed);
+        payload = validateNarrativePayload(
+          response.output_parsed,
+          narrativeInputSourceIds(narrativeInput),
+        );
       } catch {
         throw createCodedOpenAIError("OPENAI_NARRATIVE_VALIDATION_ERROR", true);
       }

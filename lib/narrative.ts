@@ -6,6 +6,7 @@ import {
   type SourceReference,
 } from "@/lib/domain";
 import { validateClaim, validateTouchpointClaims } from "@/lib/citations";
+import { evaluateTransaction } from "@/lib/engine";
 import { loadSourcePack } from "@/lib/source-pack";
 
 export const narrativeModelPayloadSchema = z.object({
@@ -26,6 +27,7 @@ function countWords(text: string) {
 
 export function validateNarrativePayload(
   rawPayload: unknown,
+  allowedSourceIds: ReadonlySet<string>,
   sources: SourceReference[] = loadSourcePack(),
 ) {
   const payload = narrativeModelPayloadSchema.parse(rawPayload);
@@ -40,6 +42,13 @@ export function validateNarrativePayload(
       sources,
       { substantive: true },
     );
+    for (const sourceId of sentence.sourceIds) {
+      if (!allowedSourceIds.has(sourceId)) {
+        throw new Error(
+          `Narrative sentence ${index + 1} uses ${sourceId}, which is not present in the current analysis.`,
+        );
+      }
+    }
   }
 
   const wordCount = countWords(
@@ -54,8 +63,43 @@ export function validateNarrativePayload(
   return payload;
 }
 
+function trustedProjection(analysis: AnalysisResult) {
+  return {
+    ruleEvaluations: analysis.analysisTrace.ruleEvaluations,
+    touchpoints: analysis.taxTouchpoints.map((touchpoint) => ({
+      id: touchpoint.id,
+      status: touchpoint.status,
+      claims: touchpoint.claims,
+      triggeredRuleIds: touchpoint.triggeredRuleIds,
+      sourceIds: touchpoint.sourceIds,
+    })),
+  };
+}
+
+export function rebuildTrustedAnalysis(rawAnalysis: unknown): AnalysisResult {
+  const submitted = analysisResultSchema.parse(rawAnalysis);
+  const rebuilt = evaluateTransaction(
+    submitted.input,
+    submitted.normalizedTransaction,
+    submitted.viesCheck,
+    {
+      rerunWithoutGpt: submitted.analysisTrace.rerunWithoutGpt,
+      generatedAt: submitted.generatedAt,
+    },
+  );
+  if (
+    JSON.stringify(trustedProjection(submitted)) !==
+    JSON.stringify(trustedProjection(rebuilt))
+  ) {
+    throw new Error(
+      "Client claims or rule results do not match the deterministic server analysis.",
+    );
+  }
+  return rebuilt;
+}
+
 export function buildNarrativeInput(rawAnalysis: unknown) {
-  const analysis: AnalysisResult = analysisResultSchema.parse(rawAnalysis);
+  const analysis = rebuildTrustedAnalysis(rawAnalysis);
   const sources = loadSourcePack();
   if (!analysis.analysisTrace.citationGatePassed) {
     throw new Error("The analysis citation gate has not passed.");
@@ -137,4 +181,13 @@ export function buildNarrativeInput(rawAnalysis: unknown) {
     sourceBackedClaims,
     missingFacts: transaction.missingFacts,
   };
+}
+
+export function narrativeInputSourceIds(
+  input: ReturnType<typeof buildNarrativeInput>,
+) {
+  return new Set([
+    ...input.triggeredRules.flatMap((rule) => rule.sourceIds),
+    ...input.sourceBackedClaims.flatMap((claim) => claim.sourceIds),
+  ]);
 }

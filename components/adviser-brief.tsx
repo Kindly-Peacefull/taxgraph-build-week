@@ -4,7 +4,11 @@ import type {
   ServiceComponent,
 } from "@/lib/domain";
 import { validateTouchpointClaims } from "@/lib/citations";
-import { validateNarrativePayload } from "@/lib/narrative";
+import {
+  buildNarrativeInput,
+  narrativeInputSourceIds,
+  validateNarrativePayload,
+} from "@/lib/narrative";
 
 const researchBoundary =
   "TaxGraph is a research and scenario-mapping tool. It does not provide a final tax opinion, calculate definitive tax payable, or replace review by a qualified professional.";
@@ -56,8 +60,10 @@ export function validateAdviserBrief(analysis: AnalysisResult) {
     validateTouchpointClaims(touchpoint, analysis.sourceReferences);
   }
   if (analysis.narrativeSummary) {
+    const narrativeInput = buildNarrativeInput(analysis);
     validateNarrativePayload(
       { sentences: analysis.narrativeSummary.sentences },
+      narrativeInputSourceIds(narrativeInput),
       analysis.sourceReferences,
     );
   }

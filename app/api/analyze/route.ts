@@ -14,6 +14,7 @@ import {
   modelNormalizationPayloadSchema,
   normalizationSystemPrompt,
 } from "@/lib/model-normalization";
+import { reconcileMissingFactQuestions } from "@/lib/missing-facts";
 import {
   classifyOpenAIError,
   createCodedOpenAIError,
@@ -26,6 +27,11 @@ import {
   readBoundedInteger,
   requestClientIdentifier,
 } from "@/lib/rate-limit";
+import {
+  readGuardedJson,
+  RequestGuardError,
+  scenarioInputCharacterCount,
+} from "@/lib/request-guards";
 import { checkViesLive } from "@/lib/vies";
 
 export const runtime = "nodejs";
@@ -55,11 +61,17 @@ export async function POST(request: Request) {
 
   let requestPayload: unknown;
   try {
-    requestPayload = await request.json();
-  } catch {
+    requestPayload = await readGuardedJson(request, 64 * 1024);
+  } catch (error) {
+    const status = error instanceof RequestGuardError ? error.status : 400;
     return NextResponse.json(
-      { error: "The request body must be valid JSON." },
-      { status: 400, headers },
+      {
+        error:
+          error instanceof RequestGuardError
+            ? error.message
+            : "The request body must be valid JSON.",
+      },
+      { status, headers },
     );
   }
 
@@ -75,6 +87,22 @@ export async function POST(request: Request) {
   }
 
   const input = parsedInput.data;
+  const maximumInputCharacters = readBoundedInteger(
+    process.env.ANALYZE_MAX_INPUT_CHARACTERS,
+    16_000,
+    1_000,
+    100_000,
+  );
+  const modelInputCharacters = scenarioInputCharacterCount(input);
+  if (modelInputCharacters > maximumInputCharacters) {
+    return NextResponse.json(
+      {
+        error: `The total transaction input exceeds the ${maximumInputCharacters}-character limit.`,
+      },
+      { status: 413, headers },
+    );
+  }
+
   if (input.demoScenarioId === "france-b2c") {
     return NextResponse.json(
       evaluateTransaction(
@@ -93,23 +121,6 @@ export async function POST(request: Request) {
         createGermanyViesResult(),
       ),
       { headers },
-    );
-  }
-
-  const maximumInputCharacters = readBoundedInteger(
-    process.env.ANALYZE_MAX_INPUT_CHARACTERS,
-    16_000,
-    1_000,
-    100_000,
-  );
-  const modelInputCharacters =
-    input.freeTextDescription.length + input.contractExcerpt.length;
-  if (modelInputCharacters > maximumInputCharacters) {
-    return NextResponse.json(
-      {
-        error: `The combined free-text and contract input exceeds the ${maximumInputCharacters}-character limit.`,
-      },
-      { status: 413, headers },
     );
   }
 
@@ -233,6 +244,11 @@ export async function POST(request: Request) {
               liveOrFixture: "unavailable",
               evidenceRef: "vies:not-checked",
             });
+
+      transaction = reconcileMissingFactQuestions(
+        transaction,
+        viesCheck.status,
+      );
 
       let result;
       try {

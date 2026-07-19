@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { flushSync } from "react-dom";
 import type {
   AnalysisResult,
+  MissingFactQuestion,
   ScenarioDiff,
   ScenarioInput,
   SourceReference,
@@ -157,6 +158,74 @@ function SourceFootnote({
     >
       {sourceId}
     </button>
+  );
+}
+
+export function MissingFactAnswerControl({
+  question,
+  value,
+  onChange,
+  onApply,
+}: {
+  question: MissingFactQuestion;
+  value: string;
+  onChange: (value: string) => void;
+  onApply: (answer: string | boolean) => void;
+}) {
+  if (question.answerType === "boolean") {
+    return (
+      <div className="answer-row binary-row">
+        <button
+          onClick={() => onApply(true)}
+          aria-label={`Answer yes: ${question.prompt}`}
+          type="button"
+        >
+          Yes
+        </button>
+        <button
+          onClick={() => onApply(false)}
+          aria-label={`Answer no: ${question.prompt}`}
+          type="button"
+        >
+          No
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="answer-row">
+      {question.answerType === "single_select" ? (
+        <select
+          aria-label={`Answer: ${question.prompt}`}
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+        >
+          <option value="">Select an answer…</option>
+          {question.options?.map((option) => (
+            <option key={option} value={option}>
+              {option.replaceAll("_", " ")}
+            </option>
+          ))}
+        </select>
+      ) : (
+        <input
+          type="text"
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          aria-label={`Answer: ${question.prompt}`}
+          maxLength={256}
+        />
+      )}
+      <button
+        onClick={() => value.trim() && onApply(value.trim())}
+        disabled={!value.trim()}
+        aria-label={`Apply answer and rerun: ${question.prompt}`}
+        type="button"
+      >
+        Apply & rerun
+      </button>
+    </div>
   );
 }
 
@@ -705,55 +774,14 @@ function Overview({
                 </div>
                 <b>{question.prompt}</b>
                 <p>{question.reason}</p>
-                {question.answerType === "single_select" ? (
-                  <div className="answer-row">
-                    <select
-                      aria-label={`Answer: ${question.prompt}`}
-                      value={answers[question.id] ?? ""}
-                      onChange={(event) =>
-                        setAnswers({
-                          ...answers,
-                          [question.id]: event.target.value,
-                        })
-                      }
-                    >
-                      <option value="">Select evidence…</option>
-                      {question.options?.map((option) => (
-                        <option key={option} value={option}>
-                          {option.replaceAll("_", " ")}
-                        </option>
-                      ))}
-                    </select>
-                    <button
-                      onClick={() =>
-                        answers[question.id] &&
-                        onAnswer(question.id, answers[question.id])
-                      }
-                      disabled={!answers[question.id]}
-                      aria-label={`Apply answer and rerun: ${question.prompt}`}
-                      type="button"
-                    >
-                      Apply & rerun
-                    </button>
-                  </div>
-                ) : (
-                  <div className="answer-row binary-row">
-                    <button
-                      onClick={() => onAnswer(question.id, true)}
-                      aria-label={`Answer yes: ${question.prompt}`}
-                      type="button"
-                    >
-                      Yes
-                    </button>
-                    <button
-                      onClick={() => onAnswer(question.id, false)}
-                      aria-label={`Answer no: ${question.prompt}`}
-                      type="button"
-                    >
-                      No
-                    </button>
-                  </div>
-                )}
+                <MissingFactAnswerControl
+                  question={question}
+                  value={answers[question.id] ?? ""}
+                  onChange={(value) =>
+                    setAnswers({ ...answers, [question.id]: value })
+                  }
+                  onApply={(answer) => onAnswer(question.id, answer)}
+                />
               </div>
             ))
           )}
@@ -1337,9 +1365,18 @@ export function TaxGraphApp() {
   };
 
   const applyAnswer = (questionId: string, answer: string | boolean) => {
-    const rerun = answerMissingFact(analysis, questionId, answer);
-    setAnalysis(rerun.result);
-    setRerunDiff(rerun.diff);
+    try {
+      const rerun = answerMissingFact(analysis, questionId, answer);
+      setAnalysis(rerun.result);
+      setRerunDiff(rerun.diff);
+      setError(null);
+    } catch (caught) {
+      setError(
+        caught instanceof Error
+          ? caught.message
+          : "The answer could not be applied; the question remains open.",
+      );
+    }
   };
 
   const exportAdviserBrief = () => {

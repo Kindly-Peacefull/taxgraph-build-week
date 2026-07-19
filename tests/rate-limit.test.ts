@@ -44,11 +44,21 @@ describe("API rate limiting", () => {
     expect(consumeRateLimit("analyze", "client-b", 1, 0).allowed).toBe(true);
   });
 
-  it("uses the first forwarded client address and clamps numeric configuration", () => {
+  it("uses Vercel's trusted client header and ignores raw x-forwarded-for", () => {
     const request = new Request("http://localhost", {
-      headers: { "x-forwarded-for": "203.0.113.7, 10.0.0.1" },
+      headers: {
+        "x-vercel-forwarded-for": "203.0.113.7, 10.0.0.1",
+        "x-forwarded-for": "198.51.100.4",
+      },
     });
     expect(requestClientIdentifier(request)).toBe("203.0.113.7");
+    expect(
+      requestClientIdentifier(
+        new Request("http://localhost", {
+          headers: { "x-forwarded-for": "198.51.100.4" },
+        }),
+      ),
+    ).toBe("unknown-client");
     expect(readBoundedInteger("999", 10, 1, 120)).toBe(120);
     expect(readBoundedInteger("invalid", 10, 1, 120)).toBe(10);
     expect(readBoundedInteger("2garbage", 10, 1, 120)).toBe(10);

@@ -79,7 +79,7 @@ for (const scenario of scenarios) {
     method: "POST",
     headers: {
       "content-type": "application/json",
-      "x-forwarded-for": `198.51.100.${results.length + 10}`,
+      "x-real-ip": `198.51.100.${results.length + 10}`,
     },
     body: JSON.stringify(scenario.input),
   });
