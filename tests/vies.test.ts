@@ -21,8 +21,20 @@ describe("VIES adapter input safety", () => {
     });
   });
 
-  it("rejects invalid input before a network call", () => {
+  it("rejects invalid input before a network call", async () => {
     expect(() => validateVatInput("DE", "***")).toThrow(/format/);
+    vi.stubEnv("VIES_LIVE_ENABLED", "true");
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await checkViesLive("DE", "***");
+
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(result).toMatchObject({
+      status: "invalid_format",
+      liveOrFixture: "unavailable",
+      errorCode: "VIES_INVALID_FORMAT",
+    });
   });
 
   it("masks VAT numbers before returning them to the UI", () => {

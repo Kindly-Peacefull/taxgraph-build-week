@@ -34,7 +34,7 @@ Legal and tax claims refer only to the supplied source pack. Exact excerpts are 
 
 ## GPT-5.6 usage
 
-The live path uses the model ID configured in `OPENAI_MODEL`; no model identifier is guessed or hard-coded. GPT does not create or modify tax rules and cannot elevate source authority.
+The live path uses the model ID configured in `OPENAI_MODEL`; no model identifier is guessed or hard-coded. GPT does not create or modify tax rules and cannot elevate source authority. The production route returned HTTP 200 for the France B2C, Germany B2B and free-input smoke cases.
 
 ## Limitations and roadmap
 
@@ -50,9 +50,10 @@ The MVP supports only a Serbian seller and France B2C / Germany B2B demo scenari
 ## Verified MVP status
 
 - Both typed demo scenarios use the production schemas, deterministic engine, citation gate, and UI.
-- The public fixture-only deployment passed the five-view, exact-source, no-GPT rerun, Germany fixture, no-key fallback, and disabled-live-VIES smoke checks.
+- The public deployment passed both fixture paths, all five views, the exact-source drawer, the no-GPT rerun and Germany fixture metadata.
 - The France location-evidence answer reruns the engine without GPT and highlights the changed touchpoint.
 - The Germany VIES result is visibly labelled as a fixture and includes safe audit metadata.
-- The server-only OpenAI Structured Outputs path is implemented but not credential-tested in this session.
-- Live VIES remains disabled until the full official operation URL is confirmed for release.
+- The server-only OpenAI Structured Outputs path is live in production; France B2C, Germany B2B and free input each returned HTTP 200 in live normalization mode.
+- The official VIES `POST /check-vat-number` operation is confirmed and enabled in production. A synthetic number returned a masked live `invalid` result; the fixture and unavailable states remain distinct.
+- The test suite currently passes 36/36 tests across 6 files, and the Next.js production build passes.
 - Source excerpts are exact and all remain pending qualified human review.

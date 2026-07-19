@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   classifyOpenAIError,
   createCodedOpenAIError,
+  isOpenAITimeoutError,
   shouldRetryOpenAIError,
 } from "@/lib/openai-safety";
 
@@ -17,6 +18,12 @@ describe("OpenAI error safety", () => {
   it("does not immediately retry quota or bad-request failures", () => {
     expect(shouldRetryOpenAIError({ status: 429 })).toBe(false);
     expect(shouldRetryOpenAIError({ status: 400 })).toBe(false);
+    const timeout = Object.assign(new Error("Request timed out."), {
+      name: "APIConnectionTimeoutError",
+    });
+    expect(isOpenAITimeoutError(timeout)).toBe(true);
+    expect(classifyOpenAIError(timeout)).toBe("OPENAI_TIMEOUT_ERROR");
+    expect(shouldRetryOpenAIError(timeout)).toBe(false);
   });
 
   it("allows one route-level retry for validation and transient service failures", () => {

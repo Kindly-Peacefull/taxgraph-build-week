@@ -134,7 +134,14 @@ export const serviceComponentSchema = z.object({
 export const viesCheckResultSchema = z.object({
   countryCode: z.string().length(2),
   vatNumberMaskedOrSafe: z.string(),
-  status: z.enum(["valid", "invalid", "unavailable", "not_checked", "fixture"]),
+  status: z.enum([
+    "valid",
+    "invalid",
+    "invalid_format",
+    "unavailable",
+    "not_checked",
+    "fixture",
+  ]),
   checkedAt: z.string().datetime(),
   liveOrFixture: z.enum(["live", "fixture", "unavailable"]),
   requestIdentifier: z.string().optional(),

@@ -4,17 +4,20 @@
 - [x] Work & Productivity track selected
 - [x] Primary Codex task retained
 - [ ] `/feedback` Session ID obtained: `________________`
-- [x] Repository accessible to the owner
+- [ ] Repository accessible to judges/public (currently private)
 - [x] README complete
 - [x] Demo URL working: `https://taxgraph-build-week.vercel.app`
-- [ ] GPT-5.6 live path verified with user-supplied credentials (implemented and documented)
+- [x] GPT-5.6 live path verified with user-supplied credentials in production
+- [x] Official live VIES path verified and enabled in production
 - [x] Demo fixture working
 - [x] Codex contribution documented
 - [x] Human decisions documented
 - [ ] Source review completed by a qualified reviewer
 - [x] Secrets removed from tracked project files
-- [x] Tests pass (22/22)
+- [x] Tests pass (36/36)
 - [x] Production build passes
+- [x] MIT License included
+- [x] Global Vercel rate-limit rule reserved for `/api/analyze`; `/api/vies` uses the code-level Hobby-plan fallback
 - [ ] Public YouTube video under three minutes: `________________`
 - [ ] Video contains voiceover and an English presentation
 - [x] Devpost description ready

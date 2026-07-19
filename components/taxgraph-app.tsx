@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type {
   AnalysisResult,
   ScenarioDiff,
@@ -74,6 +74,46 @@ function statusTone(status: string) {
 function formatValue(value: unknown) {
   if (typeof value === "string") return value;
   return JSON.stringify(value);
+}
+
+function ComparisonValue({ path, value }: { path: string; value: unknown }) {
+  if (path !== "serviceComponents" || !Array.isArray(value)) {
+    return <span>{formatValue(value)}</span>;
+  }
+
+  return (
+    <div className="component-diff-chips">
+      {value.map((item, index) => {
+        const component =
+          item && typeof item === "object"
+            ? (item as {
+                category?: unknown;
+                automationLevel?: unknown;
+                humanInvolvement?: unknown;
+              })
+            : null;
+        const category =
+          typeof component?.category === "string"
+            ? component.category.replaceAll("-", " ")
+            : `component ${index + 1}`;
+        const details = [
+          typeof component?.automationLevel === "string"
+            ? `${component.automationLevel} automation`
+            : null,
+          typeof component?.humanInvolvement === "string"
+            ? `${component.humanInvolvement} human input`
+            : null,
+        ].filter(Boolean);
+
+        return (
+          <span key={`${category}-${index}`}>
+            <b>{category}</b>
+            {details.length > 0 && <small>{details.join(" · ")}</small>}
+          </span>
+        );
+      })}
+    </div>
+  );
 }
 
 function SourceFootnote({
@@ -194,12 +234,14 @@ function InputPanel({
   onLoad,
   onAnalyze,
   analyzing,
+  progressMessage,
 }: {
   input: ScenarioInput;
   setInput: (value: ScenarioInput) => void;
   onLoad: (id: "france-b2c" | "germany-b2b") => void;
   onAnalyze: () => void;
   analyzing: boolean;
+  progressMessage: string;
 }) {
   const form = input.structuredForm;
   const setForm = <K extends keyof ScenarioInput["structuredForm"]>(
@@ -379,12 +421,13 @@ function InputPanel({
         onClick={onAnalyze}
         disabled={analyzing}
       >
-        {analyzing ? "Normalizing on the server…" : "Analyze transaction"}
+        {analyzing ? "Normalizing and decomposing…" : "Analyze transaction"}
         <span aria-hidden="true">→</span>
       </button>
-      <p className="privacy-note">
-        Live mode requires server-side OpenAI credentials. Demo fixtures need no
-        API key and use the same schemas and rule engine.
+      <p className="privacy-note" aria-live="polite">
+        {analyzing
+          ? progressMessage
+          : "Live mode uses server-side OpenAI credentials. Demo fixtures need no API key and use the same schemas and rule engine."}
       </p>
     </aside>
   );
@@ -409,7 +452,13 @@ function Overview({
         <article className="summary-card">
           <span>Seller</span>
           <b>Serbian company</b>
-          <small>No EU fixed establishment in fixture</small>
+          <small>
+            {analysis.fixtureOrLive === "fixture"
+              ? "No EU fixed establishment in fixture"
+              : transaction.seller.euFixedEstablishment === false
+                ? "No EU fixed establishment reported"
+                : "EU fixed establishment requires confirmation"}
+          </small>
         </article>
         <article className="summary-card">
           <span>Customer</span>
@@ -427,11 +476,22 @@ function Overview({
         </article>
         <article className="summary-card">
           <span>VIES</span>
-          <b>{analysis.viesCheck.status.replaceAll("_", " ")}</b>
-          <small>
-            {analysis.viesCheck.liveOrFixture} ·{" "}
-            {analysis.viesCheck.checkedAt.slice(0, 10)}
-          </small>
+          {analysis.viesCheck.status === "invalid_format" ? (
+            <>
+              <b className="vies-invalid-label">
+                Invalid format — not sent to VIES
+              </b>
+              <small>No request sent</small>
+            </>
+          ) : (
+            <>
+              <b>{analysis.viesCheck.status.replaceAll("_", " ")}</b>
+              <small>
+                {analysis.viesCheck.liveOrFixture} ·{" "}
+                {analysis.viesCheck.checkedAt.slice(0, 10)}
+              </small>
+            </>
+          )}
         </article>
       </section>
 
@@ -593,6 +653,12 @@ function Touchpoints({
   onOpenSource: (id: string) => void;
   changedIds: Set<string>;
 }) {
+  const sortedTouchpoints = [...analysis.taxTouchpoints].sort(
+    (first, second) =>
+      Number(first.status === "Not covered by the current MVP rule pack") -
+      Number(second.status === "Not covered by the current MVP rule pack"),
+  );
+
   return (
     <section className="content-card touchpoint-card">
       <div className="section-heading">
@@ -615,7 +681,7 @@ function Touchpoints({
             </tr>
           </thead>
           <tbody>
-            {analysis.taxTouchpoints.map((touchpoint) => (
+            {sortedTouchpoints.map((touchpoint) => (
               <tr
                 key={touchpoint.id}
                 className={changedIds.has(touchpoint.id) ? "row-changed" : ""}
@@ -732,9 +798,9 @@ function Comparison({
             <article key={change.path}>
               <b>{change.path}</b>
               <div className="value-change">
-                <span>{formatValue(change.oldValue)}</span>
+                <ComparisonValue path={change.path} value={change.oldValue} />
                 <i>→</i>
-                <span>{formatValue(change.newValue)}</span>
+                <ComparisonValue path={change.path} value={change.newValue} />
               </div>
               <div className="rule-pills">
                 {change.affectedRuleIds.map((id) => (
@@ -1006,6 +1072,7 @@ export function TaxGraphApp() {
   const [activeTab, setActiveTab] = useState<Tab>("Overview");
   const [selectedSourceId, setSelectedSourceId] = useState<string | null>(null);
   const [analyzing, setAnalyzing] = useState(false);
+  const [progressMessage, setProgressMessage] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [rerunDiff, setRerunDiff] = useState<ScenarioDiff | null>(null);
 
@@ -1023,6 +1090,29 @@ export function TaxGraphApp() {
     [rerunDiff],
   );
 
+  useEffect(() => {
+    if (!analyzing) return;
+    const decompositionTimer = window.setTimeout(
+      () =>
+        setProgressMessage(
+          "The model is decomposing services and checking missing facts. The server stops at its configured limit (75 seconds by default).",
+        ),
+      25_000,
+    );
+    const finalTimer = window.setTimeout(
+      () =>
+        setProgressMessage(
+          "Still working within the server deadline. If it cannot finish safely, no partial result will replace the fixture.",
+        ),
+      55_000,
+    );
+
+    return () => {
+      window.clearTimeout(decompositionTimer);
+      window.clearTimeout(finalTimer);
+    };
+  }, [analyzing]);
+
   const loadDemo = (id: "france-b2c" | "germany-b2b") => {
     const next = id === "france-b2c" ? franceAnalysis : germanyAnalysis;
     setInput(id === "france-b2c" ? franceInput : germanyInput);
@@ -1033,13 +1123,19 @@ export function TaxGraphApp() {
   };
 
   const analyze = async () => {
+    setProgressMessage(
+      "Sending the transaction for live normalization. This usually takes 30–45 seconds; the current fixture stays visible.",
+    );
     setAnalyzing(true);
     setError(null);
+    const controller = new AbortController();
+    const clientTimeoutId = window.setTimeout(() => controller.abort(), 90_000);
     try {
       const response = await fetch("/api/analyze", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ ...input, demoScenarioId: null }),
+        signal: controller.signal,
       });
       const payload = await response.json();
       if (!response.ok) {
@@ -1049,13 +1145,17 @@ export function TaxGraphApp() {
       setRerunDiff(null);
       setActiveTab("Overview");
     } catch (caught) {
-      setError(
-        caught instanceof Error
-          ? `${caught.message} The loaded fixture remains unchanged.`
-          : "Analysis failed. The loaded fixture remains unchanged.",
-      );
+      const message =
+        caught instanceof DOMException && caught.name === "AbortError"
+          ? "Live analysis stopped after 90 seconds. Please retry or use a demo fixture."
+          : caught instanceof Error
+            ? caught.message
+            : "Analysis failed.";
+      setError(`${message} The loaded fixture remains unchanged.`);
     } finally {
+      window.clearTimeout(clientTimeoutId);
       setAnalyzing(false);
+      setProgressMessage("");
     }
   };
 
@@ -1077,7 +1177,9 @@ export function TaxGraphApp() {
         </a>
         <div className="header-state">
           <span className="live-dot" />
-          Demo fixture
+          {analysis.fixtureOrLive === "fixture"
+            ? "Demo fixture"
+            : "Live analysis"}
           <i />
           Source pack 14/14 found
         </div>
@@ -1112,6 +1214,7 @@ export function TaxGraphApp() {
           onLoad={loadDemo}
           onAnalyze={analyze}
           analyzing={analyzing}
+          progressMessage={progressMessage}
         />
         <div className="analysis-workspace">
           <div className="workspace-topbar">

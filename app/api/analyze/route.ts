@@ -17,6 +17,7 @@ import {
 import {
   classifyOpenAIError,
   createCodedOpenAIError,
+  isOpenAITimeoutError,
   shouldRetryOpenAIError,
 } from "@/lib/openai-safety";
 import {
@@ -131,36 +132,53 @@ export async function POST(request: Request) {
     1_024,
     12_000,
   );
+  const timeoutMs = readBoundedInteger(
+    process.env.OPENAI_TIMEOUT_MS,
+    75_000,
+    60_000,
+    90_000,
+  );
   headers["X-TaxGraph-Max-Output-Tokens"] = String(maxOutputTokens);
+  headers["X-TaxGraph-Timeout-Ms"] = String(timeoutMs);
 
-  const client = new OpenAI({ apiKey, maxRetries: 0 });
+  const client = new OpenAI({ apiKey, maxRetries: 0, timeout: timeoutMs });
+  const normalizationStartedAt = Date.now();
   let lastError: unknown;
 
   for (let attempt = 1; attempt <= 2; attempt += 1) {
+    const remainingTimeoutMs =
+      timeoutMs - (Date.now() - normalizationStartedAt);
+    if (remainingTimeoutMs <= 0) {
+      lastError = createCodedOpenAIError("OPENAI_TIMEOUT_ERROR", false);
+      break;
+    }
     try {
-      const response = await client.responses.parse({
-        model,
-        max_output_tokens: maxOutputTokens,
-        reasoning: { effort: "low" },
-        store: false,
-        input: [
-          { role: "system", content: normalizationSystemPrompt },
-          {
-            role: "user",
-            content: JSON.stringify({
-              structuredForm: input.structuredForm,
-              freeTextDescription: input.freeTextDescription,
-              contractExcerpt: input.contractExcerpt,
-            }),
+      const response = await client.responses.parse(
+        {
+          model,
+          max_output_tokens: maxOutputTokens,
+          reasoning: { effort: "low" },
+          store: false,
+          input: [
+            { role: "system", content: normalizationSystemPrompt },
+            {
+              role: "user",
+              content: JSON.stringify({
+                structuredForm: input.structuredForm,
+                freeTextDescription: input.freeTextDescription,
+                contractExcerpt: input.contractExcerpt,
+              }),
+            },
+          ],
+          text: {
+            format: zodTextFormat(
+              modelNormalizationPayloadSchema,
+              "taxgraph_normalization",
+            ),
           },
-        ],
-        text: {
-          format: zodTextFormat(
-            modelNormalizationPayloadSchema,
-            "taxgraph_normalization",
-          ),
         },
-      });
+        { timeout: remainingTimeoutMs },
+      );
 
       if (response.usage) {
         headers["X-TaxGraph-Input-Tokens"] = String(
@@ -228,18 +246,23 @@ export async function POST(request: Request) {
 
       return NextResponse.json(result, { headers });
     } catch (error) {
-      lastError = error;
-      if (!shouldRetryOpenAIError(error)) break;
+      lastError = isOpenAITimeoutError(error)
+        ? createCodedOpenAIError("OPENAI_TIMEOUT_ERROR", false)
+        : error;
+      if (!shouldRetryOpenAIError(lastError)) break;
     }
   }
 
+  const errorCode = classifyOpenAIError(lastError);
   return NextResponse.json(
     {
       error:
-        "Live structured normalization failed after two validated attempts. No malformed result was used.",
-      errorCode: classifyOpenAIError(lastError),
+        errorCode === "OPENAI_TIMEOUT_ERROR"
+          ? `Live structured normalization stopped after the ${Math.round(timeoutMs / 1_000)}-second server limit. No partial result was used.`
+          : "Live structured normalization failed after two validated attempts. No malformed result was used.",
+      errorCode,
       fallbackAvailable: true,
     },
-    { status: 502, headers },
+    { status: errorCode === "OPENAI_TIMEOUT_ERROR" ? 504 : 502, headers },
   );
 }

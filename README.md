@@ -39,8 +39,8 @@ A Serbian company supplies a German business under a negotiated contract with su
 
 1. Load a typed fixture or complete the guided form.
 2. Optionally paste a plain-text contract excerpt.
-3. In live mode, GPT-5.6 normalizes free text, extracts contract facts, decomposes the mixed service, and returns schema-constrained missing-fact questions.
-4. Form values remain authoritative; contract conflicts are preserved instead of silently resolved.
+3. In live mode, GPT-5.6 normalizes free text, extracts description and contract facts into separate provenance channels, decomposes the mixed service, and returns schema-constrained missing-fact questions.
+4. Form values remain authoritative; contract provenance is accepted only when contract text was actually supplied, and duplicate form/contract conflicts are collapsed without silently resolving them.
 5. Deterministic TypeScript evaluates only R1–R12 and checks every mandatory source.
 6. The workspace renders the transaction flow, touchpoint matrix, scenario comparison, checklist, and full trace.
 7. A source footnote opens the exact canonical excerpt and review state.
@@ -96,7 +96,7 @@ Core modules:
 - `lib/engine.ts` — transparent typed predicates and output mapping for R1–R12.
 - `lib/fixtures.ts` — France B2C, Germany B2B, and VIES demo fixtures.
 - `lib/diff.ts` / `lib/rerun.ts` — scenario comparison and user-answer reruns.
-- `lib/model-normalization.ts` — model-output schema, form-preserving merge, contract provenance, and contradiction detection.
+- `lib/model-normalization.ts` — model-output schema, form/free-text/contract provenance, form-preserving merge, and deduplicated contradiction detection.
 - `lib/vies.ts` — server-only validation adapter, timeout, safe masking, and graceful unavailability.
 - `app/api/analyze/route.ts` — server-only OpenAI integration and limited validated retry.
 - `app/api/vies/route.ts` — server-only VIES entry point.
@@ -122,14 +122,15 @@ The live path uses the official OpenAI JavaScript SDK, the Responses API, `respo
 GPT is limited to:
 
 - normalization of free text;
+- free-text fact extraction with explicit `free-text` provenance;
 - contract-fact extraction with a character range or short exact fragment;
 - service decomposition and preliminary classification suggestions;
 - missing facts and typed questions material to R1–R12;
 - contradictions and uncertainty.
 
-The route attempts a maximum of two validated calls, disables SDK-level retries, limits each call to a configurable output-token budget, and sends `store: false`. A refusal, invalid structured result, or API error is reduced to a safe error code; malformed data is never passed to the rule engine. The fixture remains available without a key.
+The route attempts a maximum of two validated calls within one configurable 75-second deadline, disables SDK-level retries, limits each call to a configurable output-token budget, and sends `store: false`. The browser stops its own wait after 90 seconds. A refusal, timeout, invalid structured result, or API error is reduced to a safe error code; partial or malformed data is never passed to the rule engine. The fixture remains available without a key.
 
-The live GPT route has been verified locally against the OpenAI API for France B2C, Germany B2B and a free-input transaction. All three returned HTTP 200, preserved authoritative form values, produced multi-component decomposition and returned typed missing-fact questions. No credential value or full model payload is logged. See [`docs/LIVE_INTEGRATION_REPORT.md`](docs/LIVE_INTEGRATION_REPORT.md).
+The live GPT route has been verified both locally and on the production Vercel deployment for France B2C, Germany B2B and a free-input transaction. The production smoke returned HTTP 200 for all three cases, preserved authoritative form values, produced multi-component decomposition and returned typed missing-fact questions. No credential value or full model payload is logged. See [`docs/LIVE_INTEGRATION_REPORT.md`](docs/LIVE_INTEGRATION_REPORT.md).
 
 ## Deterministic engine role
 
@@ -168,10 +169,11 @@ The live adapter:
 - posts the official `countryCode` / `vatNumber` payload shape;
 - applies a configurable timeout;
 - returns `valid`, `invalid`, or `unavailable` safely;
+- rejects malformed IDs locally as `invalid_format` and does not send them to VIES;
 - masks the number sent back to the browser;
 - preserves safe request metadata.
 
-Live VIES is disabled by default. The current official [`swagger_publicVAT.yaml`](https://ec.europa.eu/assets/taxud/vow-information/swagger_publicVAT.yaml) confirms `POST /check-vat-number` and the operation URL has been verified as `https://ec.europa.eu/taxation_customs/vies/rest-api/check-vat-number`. That URL is the built-in default when live mode is explicitly enabled; an optional override is accepted only when it resolves to the same HTTPS host and path. Invalid or unavailable results create `Requires verification`; they do not turn a customer into B2C automatically.
+Live VIES is opt-in and is enabled on the production deployment. The current official [`swagger_publicVAT.yaml`](https://ec.europa.eu/assets/taxud/vow-information/swagger_publicVAT.yaml) confirms `POST /check-vat-number`, and the verified operation URL is `https://ec.europa.eu/taxation_customs/vies/rest-api/check-vat-number`. That URL is the built-in default; an optional override is accepted only when it resolves to the same HTTPS host and path. A production request with a synthetic number returned a masked live `invalid` result. Invalid, malformed or unavailable results do not turn a customer into B2C automatically.
 
 ## Local setup
 
@@ -196,6 +198,7 @@ Open [http://localhost:3000](http://localhost:3000). Leave the secret values bla
 OPENAI_API_KEY=
 OPENAI_MODEL=
 OPENAI_MAX_OUTPUT_TOKENS=6000
+OPENAI_TIMEOUT_MS=75000
 ANALYZE_RATE_LIMIT_PER_MINUTE=10
 ANALYZE_MAX_INPUT_CHARACTERS=16000
 NEXT_PUBLIC_DEMO_MODE=true
@@ -208,6 +211,7 @@ VIES_RATE_LIMIT_PER_MINUTE=30
 - `OPENAI_API_KEY`: server-only API key. Never prefix it with `NEXT_PUBLIC_`.
 - `OPENAI_MODEL`: GPT-5.6-family model identifier confirmed for the deployment account.
 - `OPENAI_MAX_OUTPUT_TOKENS`: per-call Responses API output-token ceiling; clamped to 1,024–12,000.
+- `OPENAI_TIMEOUT_MS`: shared deadline for all route-level model attempts; clamped to 60,000–90,000 ms.
 - `ANALYZE_RATE_LIMIT_PER_MINUTE`: per-client, per-instance analysis request ceiling; clamped to 1–120.
 - `ANALYZE_MAX_INPUT_CHARACTERS`: combined free-text and contract ceiling before any model call.
 - `NEXT_PUBLIC_DEMO_MODE`: documents fixture-first deployment intent.
@@ -239,9 +243,9 @@ Current verified local result:
 - Next.js production build: passed with static `/` and dynamic `/api/analyze` and `/api/vies` routes.
 - API integration: both routes returned the expected `200/200/429` or `400/400/429` sequence under a two-request test limit; live VIES returned a masked `invalid` result for a synthetic number and a forced endpoint mismatch returned safe `unavailable`.
 - Live GPT integration: France B2C, Germany B2B and free input returned HTTP 200 in live normalization mode; each produced multiple service components and typed missing-fact questions within the 6,000-token per-call ceiling.
-- Browser smoke: passed for fixture loading, Overview, 9-row Tax Touchpoints, Scenario Comparison, Checklist, Trace & Sources, source drawer, Germany VIES fixture metadata, missing-fact rerun, and a 390 px responsive viewport without page-level horizontal overflow.
+- Browser smoke: passed for fixture loading, Overview, the 9-row sorted Tax Touchpoints matrix, readable Scenario Comparison component chips, Checklist, Trace & Sources, source drawer, Germany VIES fixture metadata, and the missing-fact rerun.
 
-The tests cover schema failure, contract/form contradictions, user-answer provenance, only-R1–R12 loading, condition matching, unresolved facts, R11/S13 availability and pending gates, source authority, exact excerpts, altered quotes, unsourced conclusion blocking, rerun diffs, VIES input/endpoint/fallback safety, rate-limit windows and safe OpenAI error classification.
+The tests cover schema failure, separated form/free-text/contract provenance, duplicate contract/form contradictions, user-answer provenance, only-R1–R12 loading, condition matching, unresolved facts, R11/S13 availability and pending gates, source authority, exact excerpts, altered quotes, unsourced conclusion blocking, rerun diffs, malformed VIES input, endpoint/fallback safety, rate-limit windows and safe OpenAI timeout/error classification.
 
 ## Demo fixture instructions
 
@@ -260,14 +264,16 @@ The tests cover schema failure, contract/form contradictions, user-answer proven
 3. In Vercel Firewall, add a fixed-window IP rule for `/api/analyze` before adding the key; 10 requests per 60 seconds matches the application default. Vercel documents WAF rate limiting as the global deployment layer.
 4. Add a separately scoped, valid `OPENAI_API_KEY` and `OPENAI_MODEL` as encrypted server environment variables for the live GPT path.
 5. Set `NEXT_PUBLIC_DEMO_MODE=true` so judges have a no-key path.
-6. Keep `VIES_LIVE_ENABLED=false` unless production use of the confirmed official operation has been approved.
+6. Set `VIES_LIVE_ENABLED=true` only when production use of the confirmed official operation is intended; otherwise keep it `false` and use the labelled fixture/fallback paths.
 7. Deploy, run both fixture paths, and repeat the source/rerun checks on the public URL.
 
-The application limiter is deliberately dependency-free and protects each warm server instance. Vercel Functions can scale across instances, so the global WAF rule is a release gate for the billable GPT route, not an optional replacement for the code-level limiter. See [Vercel's official rate-limiting guide](https://vercel.com/kb/guide/add-rate-limiting-vercel).
+The application limiter is deliberately dependency-free and protects each warm server instance. Vercel Functions can scale across instances, so the Hobby-plan global WAF rule is assigned to the billable `/api/analyze` route. The `/api/vies` route retains its 30-per-minute per-client, per-instance limiter because the free plan permits only one custom rate-limit rule. See [Vercel's official rate-limiting guide](https://vercel.com/kb/guide/add-rate-limiting-vercel).
 
 What becomes public: the UI bundle, the fourteen already supplied source excerpts/URLs, rule metadata, fixtures, and documentation. API keys, live server credentials, and pasted contract text must not become public.
 
-A fixture-only production deployment is live at [taxgraph-build-week.vercel.app](https://taxgraph-build-week.vercel.app). The Vercel project is connected to the GitHub repository, `NEXT_PUBLIC_DEMO_MODE=true` and `VIES_LIVE_ENABLED=false` are stored for Production and Preview, and no OpenAI credentials are configured. The public smoke test passed for both fixtures, all five analysis views, the exact S7 source drawer, the no-GPT rerun, Germany VIES fixture metadata, the graceful no-key error, and the disabled live VIES route.
+All application responses include a Content Security Policy, `X-Content-Type-Options: nosniff`, and `Referrer-Policy: strict-origin-when-cross-origin`.
+
+A production deployment is live at [taxgraph-build-week.vercel.app](https://taxgraph-build-week.vercel.app). It keeps the no-key fixture path available, has server-only OpenAI credentials configured, and has live VIES enabled. The public smoke passed both fixtures, all five analysis views, the exact source drawer, the no-GPT rerun, Germany VIES fixture metadata, all three live GPT cases, and a masked live VIES request with a synthetic number. The demo fixtures remain explicitly labelled and do not masquerade as live results.
 
 ## Codex contribution and human decisions
 
@@ -307,6 +313,6 @@ Codex `/feedback` Session ID: pending user action
 
 ## License and dependencies
 
-No project license has been selected yet. Do not assume permission beyond repository access until the owner adds a license.
+TaxGraph is released under the MIT License. See [`LICENSE`](LICENSE).
 
 Runtime dependencies are Next.js, React, Zod, and the official OpenAI JavaScript SDK. Development dependencies are TypeScript, ESLint with the Next.js config, Prettier, and Vitest. Exact versions and integrity hashes are locked in `pnpm-lock.yaml`.
