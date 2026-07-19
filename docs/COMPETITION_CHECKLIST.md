@@ -6,7 +6,7 @@
 - [ ] `/feedback` Session ID obtained: `________________`
 - [x] Repository accessible to the owner
 - [x] README complete
-- [ ] Demo URL working: `________________`
+- [x] Demo URL working: `https://taxgraph-build-week.vercel.app`
 - [ ] GPT-5.6 live path verified with user-supplied credentials (implemented and documented)
 - [x] Demo fixture working
 - [x] Codex contribution documented

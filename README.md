@@ -253,7 +253,7 @@ The tests cover schema failure, contract/form contradictions, user-answer proven
 
 What becomes public: the UI bundle, the fourteen already supplied source excerpts/URLs, rule metadata, fixtures, and documentation. API keys, live server credentials, and pasted contract text must not become public.
 
-No deployment was performed in this session, and the demo URL remains intentionally blank in the competition documents.
+A fixture-only production deployment is live at [taxgraph-build-week.vercel.app](https://taxgraph-build-week.vercel.app). The Vercel project is connected to the GitHub repository, `NEXT_PUBLIC_DEMO_MODE=true` and `VIES_LIVE_ENABLED=false` are stored for Production and Preview, and no OpenAI credentials are configured. The public smoke test passed for both fixtures, all five analysis views, the exact S7 source drawer, the no-GPT rerun, Germany VIES fixture metadata, the graceful no-key error, and the disabled live VIES route.
 
 ## Codex contribution and human decisions
 
@@ -287,7 +287,7 @@ None of these are implemented in the MVP.
 - `docs/SOURCE_REVIEW.md` — qualified-review register.
 
 Repository: [Kindly-Peacefull/taxgraph-build-week](https://github.com/Kindly-Peacefull/taxgraph-build-week)  
-Demo URL: pending  
+Demo URL: [taxgraph-build-week.vercel.app](https://taxgraph-build-week.vercel.app)  
 Video URL: pending  
 Codex `/feedback` Session ID: pending user action
 

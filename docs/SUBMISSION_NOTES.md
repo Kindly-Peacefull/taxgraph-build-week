@@ -43,13 +43,14 @@ The MVP supports only a Serbian seller and France B2C / Germany B2B demo scenari
 ## Links
 
 - Repository: `https://github.com/Kindly-Peacefull/taxgraph-build-week`
-- Demo: `________________`
+- Demo: `https://taxgraph-build-week.vercel.app`
 - Video: `________________`
 - Codex Session ID: `________________`
 
 ## Verified MVP status
 
 - Both typed demo scenarios use the production schemas, deterministic engine, citation gate, and UI.
+- The public fixture-only deployment passed the five-view, exact-source, no-GPT rerun, Germany fixture, no-key fallback, and disabled-live-VIES smoke checks.
 - The France location-evidence answer reruns the engine without GPT and highlights the changed touchpoint.
 - The Germany VIES result is visibly labelled as a fixture and includes safe audit metadata.
 - The server-only OpenAI Structured Outputs path is implemented but not credential-tested in this session.
