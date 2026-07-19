@@ -19,6 +19,7 @@ import {
   germanyInput,
 } from "@/lib/fixtures";
 import { answerMissingFact } from "@/lib/rerun";
+import { AdviserBrief } from "@/components/adviser-brief";
 
 const franceAnalysis = evaluateTransaction(
   franceInput,
@@ -1227,13 +1228,22 @@ export function TaxGraphApp() {
                 <span> · Managed AI Assistant</span>
               </h2>
             </div>
-            <div className="workspace-badges">
-              <span>
-                {analysis.fixtureOrLive === "fixture"
-                  ? "Demo fixture"
-                  : "Live analysis"}
-              </span>
-              <span className="pending-chip">Pending human review</span>
+            <div className="workspace-actions">
+              <button
+                className="export-brief-button"
+                type="button"
+                onClick={() => window.print()}
+              >
+                Export adviser brief
+              </button>
+              <div className="workspace-badges">
+                <span>
+                  {analysis.fixtureOrLive === "fixture"
+                    ? "Demo fixture"
+                    : "Live analysis"}
+                </span>
+                <span className="pending-chip">Pending human review</span>
+              </div>
             </div>
           </div>
           {error && <div className="error-banner">{error}</div>}
@@ -1284,6 +1294,7 @@ export function TaxGraphApp() {
           R1–R12 only · No final tax advice · Sources pending human review
         </span>
       </footer>
+      <AdviserBrief analysis={analysis} />
       <SourceDrawer
         source={selectedSource}
         onClose={() => setSelectedSourceId(null)}
