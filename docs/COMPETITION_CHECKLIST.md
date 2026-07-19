@@ -14,7 +14,7 @@
 - [x] Human decisions documented
 - [ ] Source review completed by a qualified reviewer
 - [x] Secrets removed from tracked project files
-- [x] Tests pass (61/61)
+- [x] Tests pass (63/63)
 - [x] Production build passes
 - [x] MIT License included
 - [x] Global Vercel rate-limit rule reserved for `/api/analyze`; `/api/vies` uses the code-level Hobby-plan fallback
