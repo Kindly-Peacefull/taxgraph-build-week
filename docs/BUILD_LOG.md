@@ -25,4 +25,4 @@
 - **Human decision:** continue without an OpenAI API key for now and add it later; keep live VIES disabled until the official operation URL and production behavior receive release review.
 - **Checks:** Vercel production build passed; the stable public URL loaded both fixtures and all five views; the matrix contained nine touchpoints; S7 opened with its exact canonical excerpt; the France missing-fact answer reran without GPT; the Germany trace exposed the fixture request ID; the no-key path showed a graceful error while retaining the fixture; the VIES route returned `LIVE_DISABLED`; no browser console errors were reported.
 - **Known limitations:** live OpenAI and live VIES remain unverified and disabled; source review, public video, `/feedback` Session ID, and Devpost submission remain external user/release actions.
-- **Commit:** pending.
+- **Commit:** `f9046c6`.
