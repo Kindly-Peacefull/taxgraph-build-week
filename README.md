@@ -55,6 +55,15 @@ A Serbian company supplies a German business under a negotiated contract with su
 - **Interactive audit loop.** Missing facts update the normalized transaction with prior-value provenance and rerun the same deterministic engine.
 - **Fixture honesty.** Live, fixture, and unavailable VIES/model states are represented separately.
 
+## How TaxGraph differs
+
+| Category                             | Examples               | Focus                                                                          | Works at                            |
+| ------------------------------------ | ---------------------- | ------------------------------------------------------------------------------ | ----------------------------------- |
+| Tax calculation & compliance engines | Avalara, Anrok, Sphere | registration thresholds, calculation, filing                                   | after the transaction is classified |
+| AI tax research assistants           | Blue J, azta           | cited answers to practitioner questions                                        | when you already know what to ask   |
+| Merchant of record                   | Paddle, Lemon Squeezy  | takes over B2C sales tax by reselling                                          | replaces the seller for B2C         |
+| TaxGraph                             | this project           | decomposes a mixed AI deal, finds missing facts, maps source-gated touchpoints | before the deal is signed           |
+
 ## Interface
 
 The application has one input panel and five analysis views:
@@ -239,7 +248,7 @@ Current verified local result:
 - Prettier: passed.
 - ESLint: passed.
 - TypeScript: passed.
-- Vitest: 36 tests passed in 6 test files.
+- Vitest: 40 tests passed in 7 test files.
 - Next.js production build: passed with static `/` and dynamic `/api/analyze` and `/api/vies` routes.
 - API integration: both routes returned the expected `200/200/429` or `400/400/429` sequence under a two-request test limit; live VIES returned a masked `invalid` result for a synthetic number and a forced endpoint mismatch returned safe `unavailable`.
 - Live GPT integration: France B2C, Germany B2B and free input returned HTTP 200 in live normalization mode; each produced multiple service components and typed missing-fact questions within the 6,000-token per-call ceiling.

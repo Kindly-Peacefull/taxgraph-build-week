@@ -18,4 +18,6 @@ Use the deterministic fixtures for the recorded walkthrough so the presentation 
 
 **2:30–2:45 — Explain the architecture.** GPT-5.6 normalizes and decomposes on the server and has passed three production smoke cases. Typed code owns R1–R12, source gates, citations, diffs, VIES states, and reruns. Fixture mode uses the same schemas and engine.
 
-**2:45–2:50 — Close.** TaxGraph turns a vague cross-border AI sale into a reviewable pre-sale evidence map, with every legal source still visibly pending qualified human review.
+**2:45–2:50 — Export the deliverable.** Click **Export adviser brief** and show the print-ready brief as the final artefact for a qualified adviser. It uses the current result and does not call GPT again.
+
+**2:50–2:55 — Close.** TaxGraph turns a vague cross-border AI sale into a reviewable pre-sale evidence map, with every legal source still visibly pending qualified human review.

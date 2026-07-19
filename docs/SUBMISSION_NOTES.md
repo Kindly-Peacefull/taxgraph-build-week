@@ -16,6 +16,12 @@ Founders, finance teams, accountants, tax advisers, and compliance professionals
 
 TaxGraph decomposes the transaction, preserves provenance and contradictions, evaluates a deliberately narrow R1–R12 rule pack, and exposes every substantive claim through an exact official excerpt. It maps decisions and evidence; it does not issue a final tax opinion.
 
+TaxGraph works before tools in adjacent categories: calculation and compliance engines such as Avalara, Anrok, and Sphere operate after a transaction is classified; research assistants such as Blue J and azta answer cited practitioner questions once the user knows what to ask; and merchants of record such as Paddle and Lemon Squeezy replace the seller for B2C. TaxGraph instead decomposes a mixed AI deal, identifies missing facts, and maps source-gated touchpoints before the deal is signed.
+
+## Planned business model
+
+The roadmap is a white-label intake tool for accounting and tax firms: a client describes a deal in their own words, and the firm receives a structured adviser brief for professional review. Possible pricing is per brief or per seat. This is a planned model only; TaxGraph does not claim current customers or commercial adoption.
+
 ## How it works
 
 The user loads or enters a transaction and may paste a contract excerpt. GPT-5.6 performs schema-constrained normalization and service decomposition on the server. Deterministic TypeScript code evaluates the fixed rules, enforces source review state, builds touchpoints, and reruns instantly when the user answers a missing-fact question.
@@ -55,5 +61,5 @@ The MVP supports only a Serbian seller and France B2C / Germany B2B demo scenari
 - The Germany VIES result is visibly labelled as a fixture and includes safe audit metadata.
 - The server-only OpenAI Structured Outputs path is live in production; France B2C, Germany B2B and free input each returned HTTP 200 in live normalization mode.
 - The official VIES `POST /check-vat-number` operation is confirmed and enabled in production. A synthetic number returned a masked live `invalid` result; the fixture and unavailable states remain distinct.
-- The test suite currently passes 36/36 tests across 6 files, and the Next.js production build passes.
+- The test suite currently passes 40/40 tests across 7 files, and the Next.js production build passes.
 - Source excerpts are exact and all remain pending qualified human review.
