@@ -1682,6 +1682,8 @@ footer {
   }
   .brief-section {
     margin-top: 7mm;
+    break-inside: avoid;
+    page-break-inside: avoid;
   }
   .brief-section h2 {
     margin: 0 0 3mm;
@@ -1720,12 +1722,16 @@ footer {
   .brief-components section,
   .brief-checklist section {
     break-inside: avoid;
+    page-break-inside: avoid;
     padding: 3mm;
     border: 1px solid var(--brief-line);
     background: var(--brief-tint);
   }
   .brief-components p {
     margin: 1mm 0;
+  }
+  .brief-components h3 {
+    text-transform: none;
   }
   .brief-components small,
   .brief-touchpoints small {
@@ -1780,6 +1786,7 @@ footer {
   }
   .brief-two-column > div {
     break-inside: avoid;
+    page-break-inside: avoid;
   }
   .brief-contradictions li,
   .brief-contradictions span,

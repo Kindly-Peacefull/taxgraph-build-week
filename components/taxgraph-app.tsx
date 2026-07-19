@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { flushSync } from "react-dom";
 import type {
   AnalysisResult,
   ScenarioDiff,
@@ -1203,6 +1204,7 @@ export function TaxGraphApp() {
   const [error, setError] = useState<string | null>(null);
   const [narrativeError, setNarrativeError] = useState<string | null>(null);
   const [rerunDiff, setRerunDiff] = useState<ScenarioDiff | null>(null);
+  const [briefExportedAt, setBriefExportedAt] = useState<string | null>(null);
 
   const selectedSource = useMemo(
     () =>
@@ -1340,6 +1342,12 @@ export function TaxGraphApp() {
     setRerunDiff(rerun.diff);
   };
 
+  const exportAdviserBrief = () => {
+    const exportedAt = new Date().toISOString();
+    flushSync(() => setBriefExportedAt(exportedAt));
+    window.print();
+  };
+
   return (
     <main>
       <header className="site-header">
@@ -1408,7 +1416,7 @@ export function TaxGraphApp() {
               <button
                 className="export-brief-button"
                 type="button"
-                onClick={() => window.print()}
+                onClick={exportAdviserBrief}
                 aria-label="Export current analysis as an adviser brief"
               >
                 Export adviser brief
@@ -1480,7 +1488,10 @@ export function TaxGraphApp() {
           R1–R12 only · No final tax advice · Sources pending human review
         </span>
       </footer>
-      <AdviserBrief analysis={analysis} />
+      <AdviserBrief
+        analysis={analysis}
+        exportedAt={briefExportedAt ?? analysis.generatedAt}
+      />
       <SourceDrawer
         source={selectedSource}
         onClose={() => setSelectedSourceId(null)}
