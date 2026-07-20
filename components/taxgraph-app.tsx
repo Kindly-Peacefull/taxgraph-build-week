@@ -7,6 +7,7 @@ import type {
   MissingFactQuestion,
   ScenarioDiff,
   ScenarioInput,
+  ServiceComponent,
   SourceReference,
   TaxTouchpoint,
 } from "@/lib/domain";
@@ -102,6 +103,24 @@ function formatValue(value: unknown) {
   return JSON.stringify(value);
 }
 
+const componentCategoryLabels: Record<ServiceComponent["category"], string> = {
+  "saas-access": "SaaS access",
+  configuration: "Configuration",
+  "custom-integration": "Custom integration",
+  hosting: "Hosting",
+  "human-support": "Human support",
+  training: "Training",
+  "software-licence": "Software licence",
+};
+
+export function componentCategoryLabel(category: ServiceComponent["category"]) {
+  return componentCategoryLabels[category];
+}
+
+export function componentCountLabel(count: number, includeService = false) {
+  return `${count} ${includeService ? "service " : ""}component${count === 1 ? "" : "s"}`;
+}
+
 function ComparisonValue({ path, value }: { path: string; value: unknown }) {
   if (path !== "serviceComponents" || !Array.isArray(value)) {
     return <span>{formatValue(value)}</span>;
@@ -120,7 +139,9 @@ function ComparisonValue({ path, value }: { path: string; value: unknown }) {
             : null;
         const category =
           typeof component?.category === "string"
-            ? component.category.replaceAll("-", " ")
+            ? (componentCategoryLabels[
+                component.category as ServiceComponent["category"]
+              ] ?? component.category.replaceAll("-", " "))
             : `component ${index + 1}`;
         const details = [
           typeof component?.automationLevel === "string"
@@ -230,7 +251,10 @@ export function MissingFactAnswerControl({
 }
 
 function FlowDiagram({ analysis }: { analysis: AnalysisResult }) {
-  const componentLabel = `${analysis.diagramData.components.length} service components`;
+  const componentLabel = componentCountLabel(
+    analysis.diagramData.components.length,
+    true,
+  );
   return (
     <div className="flow-wrap" aria-label="Transaction flow diagram">
       <svg viewBox="0 0 1040 190" role="img">
@@ -697,7 +721,7 @@ function Overview({
             <h3>Managed AI Customer Support Assistant</h3>
           </div>
           <span className="count-chip">
-            {transaction.serviceComponents.length} components
+            {componentCountLabel(transaction.serviceComponents.length)}
           </span>
         </div>
         <div className="component-grid">
@@ -708,7 +732,7 @@ function Overview({
             return (
               <article className="component-card" key={component.id}>
                 <div className="component-topline">
-                  <span>{component.category.replaceAll("-", " ")}</span>
+                  <span>{componentCategoryLabel(component.category)}</span>
                   <b>{classification?.result ?? "Requires verification"}</b>
                 </div>
                 <p>{component.description}</p>

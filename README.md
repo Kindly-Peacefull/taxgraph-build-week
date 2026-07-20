@@ -248,7 +248,7 @@ Current verified local result:
 - Prettier: passed.
 - ESLint: passed.
 - TypeScript: passed.
-- Vitest: 61 tests passed in 12 test files.
+- Vitest: 63 tests passed in 13 test files.
 - Next.js production build: passed with static `/` and dynamic `/api/analyze`, `/api/explain`, and `/api/vies` routes.
 - API integration: both routes returned the expected `200/200/429` or `400/400/429` sequence under a two-request test limit; live VIES returned a masked `invalid` result for a synthetic number and a forced endpoint mismatch returned safe `unavailable`.
 - Live GPT integration: France B2C, Germany B2B and free input returned HTTP 200 in live normalization mode; each produced multiple service components and typed missing-fact questions within the 6,000-token per-call ceiling.

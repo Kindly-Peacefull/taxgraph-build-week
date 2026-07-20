@@ -696,7 +696,7 @@ main {
   font-size: 8px;
   font-weight: 900;
   letter-spacing: 0.07em;
-  text-transform: uppercase;
+  text-transform: none;
 }
 .component-topline b {
   color: var(--muted);
