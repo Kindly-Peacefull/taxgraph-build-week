@@ -112,11 +112,35 @@ describe("R1-R12 deterministic engine", () => {
     expect(getRule(result, "R11")?.disabledReason).toContain("S13");
   });
 
-  it("keeps found-but-pending S13 output draft-only", () => {
+  it("allows reviewed S13 to support a non-draft R11 status", () => {
     const result = evaluateTransaction(
       franceInput,
       createFranceTransaction(),
       createFranceViesResult(),
+    );
+    expect(getRule(result, "R11")?.outputStatus).toBe("Likely applicable");
+  });
+
+  it("allows reviewed S4 and S12 to support a non-draft R7 status", () => {
+    const result = evaluateTransaction(
+      germanyInput,
+      createGermanyTransaction(),
+      createGermanyViesResult(),
+    );
+    expect(getRule(result, "R7")?.outputStatus).toBe("Likely applicable");
+  });
+
+  it("keeps found-but-pending S13 output draft-only", () => {
+    const sources: SourceReference[] = loadSourcePack().map((source) =>
+      source.id === "S13"
+        ? { ...source, humanReviewStatus: "pending" as const }
+        : source,
+    );
+    const result = evaluateTransaction(
+      franceInput,
+      createFranceTransaction(),
+      createFranceViesResult(),
+      { sources },
     );
     expect(getRule(result, "R11")?.outputStatus).toBe("Pending human review");
   });
@@ -140,6 +164,6 @@ describe("R1-R12 deterministic engine", () => {
     expect(
       result.taxTouchpoints.find((item) => item.id === "location-evidence")
         ?.status,
-    ).toBe("Pending human review");
+    ).toBe("Likely applicable");
   });
 });

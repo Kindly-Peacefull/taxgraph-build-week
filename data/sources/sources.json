@@ -11,10 +11,12 @@
     "translationEn": "",
     "retrievedAt": "2026-07-19",
     "confirms": "B2C electronically supplied services are supplied where the customer is established, has a permanent address or usually resides.",
-    "linkedRules": ["R1"],
+    "linkedRules": [
+      "R1"
+    ],
     "illustrative": false,
     "status": "found",
-    "humanReviewStatus": "pending",
+    "humanReviewStatus": "reviewed",
     "notes": "Verified against the consolidated text dated 14 April 2025 (CELEX 02006L0112-20250414), not the original 2006 text."
   },
   {
@@ -29,10 +31,12 @@
     "translationEn": "",
     "retrievedAt": "2026-07-19",
     "confirms": "Under the B2B general rule, services are supplied where the taxable customer is established or at the relevant fixed establishment.",
-    "linkedRules": ["R6"],
+    "linkedRules": [
+      "R6"
+    ],
     "illustrative": false,
     "status": "found",
-    "humanReviewStatus": "pending",
+    "humanReviewStatus": "reviewed",
     "notes": "Verified against the consolidated text dated 14 April 2025."
   },
   {
@@ -46,11 +50,13 @@
     "excerpt": "The place of supply of services to a non-taxable person shall be the place where the supplier has established his business. However, if those services are provided from a fixed establishment of the supplier located in a place other than the place where he has established his business, the place of supply of those services shall be the place where that fixed establishment is located. In the absence of such place of establishment or fixed establishment, the place of supply of services shall be the place where the supplier has his permanent address or usually resides.",
     "translationEn": "",
     "retrievedAt": "2026-07-19",
-    "confirms": "Article 45 supplies the B2C general rule at the supplier's establishment, subject to the Directive's specific exceptions; it is the contrast rule for non-ESS human-delivered components.",
-    "linkedRules": ["R10"],
+    "confirms": "Article 45 sets the B2C general rule: services supplied to a non-taxable person are supplied where the supplier has established his business, subject to the specific exceptions provided by the Directive.",
+    "linkedRules": [
+      "R10"
+    ],
     "illustrative": false,
     "status": "found",
-    "humanReviewStatus": "pending",
+    "humanReviewStatus": "reviewed",
     "notes": "Do not apply Article 45 mechanically where a specific rule may override it; keep the human-services conclusion at professional review."
   },
   {
@@ -65,10 +71,12 @@
     "translationEn": "",
     "retrievedAt": "2026-07-19",
     "confirms": "For Article 44 services supplied by a supplier not established in the Member State, the taxable customer is liable for VAT under reverse charge.",
-    "linkedRules": ["R7"],
+    "linkedRules": [
+      "R7"
+    ],
     "illustrative": false,
     "status": "found",
-    "humanReviewStatus": "pending",
+    "humanReviewStatus": "reviewed",
     "notes": "German national implementation is cross-referenced in S12."
   },
   {
@@ -83,10 +91,12 @@
     "translationEn": "",
     "retrievedAt": "2026-07-19",
     "confirms": "A reverse-charge invoice includes the customer's VAT identification number and the mention ‘Reverse charge’.",
-    "linkedRules": ["R8"],
+    "linkedRules": [
+      "R8"
+    ],
     "illustrative": false,
     "status": "found",
-    "humanReviewStatus": "pending",
+    "humanReviewStatus": "reviewed",
     "notes": "The ellipsis joins two verbatim, non-contiguous points of Article 226."
   },
   {
@@ -101,10 +111,12 @@
     "translationEn": "",
     "retrievedAt": "2026-07-19",
     "confirms": "Annex II gives an indicative ESS list that includes software supply and updating, website supply and online information or database access.",
-    "linkedRules": ["R2"],
+    "linkedRules": [
+      "R2"
+    ],
     "illustrative": false,
     "status": "found",
-    "humanReviewStatus": "pending",
+    "humanReviewStatus": "reviewed",
     "notes": "The list is indicative; Article 7 of Implementing Regulation 282/2011 supplies the automation and human-intervention criteria."
   },
   {
@@ -119,10 +131,12 @@
     "translationEn": "",
     "retrievedAt": "2026-07-19",
     "confirms": "ESS must be essentially automated, involve minimal human intervention and depend on information technology; specified professional advice and teacher-delivered remote teaching are excluded.",
-    "linkedRules": ["R2"],
+    "linkedRules": [
+      "R2"
+    ],
     "illustrative": false,
     "status": "found",
-    "humanReviewStatus": "pending",
+    "humanReviewStatus": "reviewed",
     "notes": "The ellipses join verbatim, non-contiguous provisions within Article 7."
   },
   {
@@ -137,10 +151,12 @@
     "translationEn": "",
     "retrievedAt": "2026-07-19",
     "confirms": "The default residual presumption uses two non-contradictory evidence items; the one-item simplification is limited to supplies from a business or fixed establishment located in a Member State and therefore does not cover a Serbian supplier with no EU establishment.",
-    "linkedRules": ["R4"],
+    "linkedRules": [
+      "R4"
+    ],
     "illustrative": false,
     "status": "found",
-    "humanReviewStatus": "pending",
+    "humanReviewStatus": "reviewed",
     "notes": "Article 24f continues with SIM-country, fixed-landline and other commercially relevant evidence. The ellipsis joins Article 24b to the Article 24f evidence list."
   },
   {
@@ -155,10 +171,12 @@
     "translationEn": "",
     "retrievedAt": "2026-07-19",
     "confirms": "A Serbian supplier with no EU establishment is eligible for the optional non-Union OSS; the EUR 10 000 threshold conditions are unavailable to it, so destination VAT applies from the first sale, and non-Union OSS returns are quarterly.",
-    "linkedRules": ["R3"],
+    "linkedRules": [
+      "R3"
+    ],
     "illustrative": false,
     "status": "found",
-    "humanReviewStatus": "pending",
+    "humanReviewStatus": "reviewed",
     "notes": "OSS is optional. Without OSS, the portal states that the supplier would be required to register in each Member State in which it supplies covered services to consumers. The ellipses join three verbatim, non-contiguous passages."
   },
   {
@@ -173,10 +191,12 @@
     "translationEn": "",
     "retrievedAt": "2026-07-19",
     "confirms": "VIES is the Commission's official VAT-number validation service and publishes machine-readable REST and SOAP interfaces suitable for a server-side check.",
-    "linkedRules": ["R9"],
+    "linkedRules": [
+      "R9"
+    ],
     "illustrative": false,
     "status": "found",
-    "humanReviewStatus": "pending",
+    "humanReviewStatus": "reviewed",
     "notes": "The official REST OpenAPI document is https://ec.europa.eu/assets/taxud/vow-information/swagger_publicVAT.yaml. The production REST operation is documented as /check-vat-number. The app must handle service and Member State unavailability gracefully."
   },
   {
@@ -191,10 +211,12 @@
     "translationEn": "The standard rate applies to all transactions for which no other rate is provided. It is set at 20% for metropolitan France and Corsica (CGI, Article 278).",
     "retrievedAt": "2026-07-19",
     "confirms": "The French standard VAT rate is 20%; TaxGraph may display it only as an illustrative rate, not as a final liability determination.",
-    "linkedRules": ["R5"],
+    "linkedRules": [
+      "R5"
+    ],
     "illustrative": true,
     "status": "found",
-    "humanReviewStatus": "pending",
+    "humanReviewStatus": "reviewed",
     "notes": "This replaces the draft Légifrance URL because the task's allowlist permits impots.gouv.fr but does not list legifrance.gouv.fr."
   },
   {
@@ -208,11 +230,13 @@
     "excerpt": "(2) Für folgende steuerpflichtige Umsätze entsteht die Steuer mit Ausstellung der Rechnung, spätestens jedoch mit Ablauf des der Ausführung der Leistung folgenden Kalendermonats: 1. Werklieferungen und nicht unter Absatz 1 fallende sonstige Leistungen eines im Ausland ansässigen Unternehmers; […] (5) In den in den Absätzen 1 und 2 Nummer 1 bis 3 genannten Fällen schuldet der Leistungsempfänger die Steuer, wenn er ein Unternehmer oder eine juristische Person ist;",
     "translationEn": "(2) For the following taxable transactions, the tax arises when the invoice is issued, but no later than the end of the calendar month following performance: 1. supplies of work and materials, and other services not falling under paragraph 1, supplied by an entrepreneur established abroad; […] (5) In the cases referred to in paragraphs 1 and 2 numbers 1 to 3, the recipient owes the tax if the recipient is an entrepreneur or a legal person;",
     "retrievedAt": "2026-07-19",
-    "confirms": "For services supplied by a Serbian entrepreneur established outside Germany, § 13b(2)(1) brings the supply into reverse charge and § 13b(5) makes the German business recipient liable.",
-    "linkedRules": ["R7"],
+    "confirms": "Where a taxable transaction falls within § 13b(2)(1) UStG — supplies of work and other services by an entrepreneur established abroad — § 13b(5) sentence 1 makes the recipient liable for the VAT, provided the recipient is an entrepreneur or a legal person; both conditions must be met for the reverse charge to apply.",
+    "linkedRules": [
+      "R7"
+    ],
     "illustrative": false,
     "status": "found",
-    "humanReviewStatus": "pending",
+    "humanReviewStatus": "reviewed",
     "notes": "The draft pinpoint to § 13b(1) was incorrect for a Serbian (third-country) supplier; paragraph 1 concerns a supplier established elsewhere in the EU."
   },
   {
@@ -227,10 +251,12 @@
     "translationEn": "Where services are supplied to a taxable person, the place of supply is the place where the recipient has its seat, or its fixed establishment if the services are supplied to a fixed establishment located elsewhere, or the recipient's permanent or temporary residence. […] As an exception to paragraphs 4 and 5, electronically supplied services provided to a non-taxable person are supplied at the recipient's seat, permanent residence or temporary residence.",
     "retrievedAt": "2026-07-19",
     "confirms": "For a Serbian seller, the B2B general rule places services at the foreign business recipient, while the listed B2C electronically supplied services follow the non-taxable recipient's location; in both scenarios the stated place is outside Serbia.",
-    "linkedRules": ["R11"],
+    "linkedRules": [
+      "R11"
+    ],
     "illustrative": false,
     "status": "found",
-    "humanReviewStatus": "pending",
+    "humanReviewStatus": "reviewed",
     "notes": "Verified in the official consolidated text including amendments through Official Gazette RS 109/25, applicable from 1 April 2026 (with stated transition dates). The ellipses join the B2B rule and the B2C electronic-services exception."
   },
   {
@@ -245,10 +271,12 @@
     "translationEn": "",
     "retrievedAt": "2026-07-19",
     "confirms": "Article 13 governs royalties and permits source-state tax up to the treaty limit where its conditions are met; whether a specific software-rights transfer is a royalty and what withholding steps apply requires professional review.",
-    "linkedRules": ["R12"],
+    "linkedRules": [
+      "R12"
+    ],
     "illustrative": false,
     "status": "found",
-    "humanReviewStatus": "pending",
+    "humanReviewStatus": "reviewed",
     "notes": "The BMF country page states continued application of the German-Yugoslav treaties to Serbia: https://www.bundesfinanzministerium.de/Content/DE/Standardartikel/Themen/Steuern/Internationales_Steuerrecht/Staatenbezogene_Informationen/Laender_A_Z/Serbien/1988-09-08-Serbien-Abkommen-DBA.html. Serbia's Ministry of Finance stated on 27 June 2025 that the old treaty was still in force and that a replacement had only been initialled: https://mfin.gov.rs/sr/aktivnosti-1/parafiran-ugovor-o-izbegavanju-dvostrukog-oporezivanja-sa-nemakom-1. Keep R12 at Professional review required."
   }
 ]

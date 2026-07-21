@@ -36,7 +36,7 @@ Next.js App Router, TypeScript, Zod, the official OpenAI SDK, a typed R1–R12 e
 
 ## Source integrity
 
-Legal and tax claims refer only to the supplied source pack. Exact excerpts are rendered without model rewriting. Every current source remains pending human review and therefore supports draft research output only.
+Legal and tax claims refer only to the supplied source pack. Exact excerpts are rendered without model rewriting. All fourteen sources are marked reviewed after S3 and S12 were corrected and re-checked. Reviewed source status does not convert the result into a final tax opinion.
 
 ## GPT-5.6 usage
 
@@ -61,5 +61,5 @@ The MVP supports only a Serbian seller and France B2C / Germany B2B demo scenari
 - The Germany VIES result is visibly labelled as a fixture and includes safe audit metadata.
 - The server-only OpenAI Structured Outputs path is live in production; France B2C, Germany B2B and free input each returned HTTP 200 in live normalization mode.
 - The official VIES `POST /check-vat-number` operation is confirmed and enabled in production. A synthetic number returned a masked live `invalid` result; the fixture and unavailable states remain distinct.
-- The test suite currently passes 63/63 tests across 13 files, and the Next.js production build passes.
-- Source excerpts are exact and all remain pending qualified human review.
+- The test suite currently passes 67/67 tests across 13 files, and the Next.js production build passes.
+- Source excerpts are exact and all fourteen sources are marked reviewed.

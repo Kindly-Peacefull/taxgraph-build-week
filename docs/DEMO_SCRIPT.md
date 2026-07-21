@@ -8,7 +8,7 @@ Use the deterministic fixtures for the recorded walkthrough so the presentation 
 
 **0:40–1:00 — Decomposition and contract facts.** Show the service components and the known, inferred, missing, and conflicting fact groups with provenance.
 
-**1:00–1:25 — France B2C touchpoints.** Open Tax Touchpoints. Show the preliminary ESS, destination, evidence, and reporting-route rows. Emphasize that every legal claim is pending human review.
+**1:00–1:25 — France B2C touchpoints.** Open Tax Touchpoints. Show the preliminary ESS, destination, evidence, and reporting-route rows. Point out that review-state badges come from the source register and that reviewed sources can support non-draft statuses where the rule permits it.
 
 **1:25–1:50 — Compare Germany B2B.** Open Scenario Comparison. Show the readable component chips, changed customer facts, affected rules, German B2B place-of-supply path, reverse-charge checklist, and professional-review flags.
 
@@ -20,4 +20,4 @@ Use the deterministic fixtures for the recorded walkthrough so the presentation 
 
 **2:45–2:50 — Export the deliverable.** Click **Export adviser brief** and show the print-ready brief as the final artefact for a qualified adviser. It uses the current result and does not call GPT again.
 
-**2:50–2:55 — Close.** TaxGraph turns a vague cross-border AI sale into a reviewable pre-sale evidence map, with every legal source still visibly pending qualified human review.
+**2:50–2:55 — Close.** TaxGraph turns a vague cross-border AI sale into a reviewable pre-sale evidence map while keeping each source's reviewed or pending state visible.
