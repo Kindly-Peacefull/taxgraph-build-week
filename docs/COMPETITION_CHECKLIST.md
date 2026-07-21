@@ -4,7 +4,7 @@
 - [x] Work & Productivity track selected
 - [x] Primary Codex task retained
 - [ ] `/feedback` Session ID obtained: `________________`
-- [ ] Repository accessible to judges/public (currently private)
+- [x] Repository accessible to judges/public
 - [x] README complete
 - [x] Demo URL working: `https://taxgraph-build-week.vercel.app`
 - [x] GPT-5.6 live path verified with user-supplied credentials in production
@@ -12,9 +12,9 @@
 - [x] Demo fixture working
 - [x] Codex contribution documented
 - [x] Human decisions documented
-- [ ] Source review completed by a qualified reviewer
+- [x] Source review register completed (14 reviewed; output remains non-binding)
 - [x] Secrets removed from tracked project files
-- [x] Tests pass (63/63)
+- [x] Tests pass (67/67)
 - [x] Production build passes
 - [x] MIT License included
 - [x] Global Vercel rate-limit rule reserved for `/api/analyze`; `/api/vies` uses the code-level Hobby-plan fallback

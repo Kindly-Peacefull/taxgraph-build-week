@@ -6,11 +6,33 @@ import {
   validateTouchpointClaims,
 } from "@/lib/citations";
 import type { TaxTouchpoint } from "@/lib/domain";
-import { loadSourcePack } from "@/lib/source-pack";
+import { isReviewedSource, loadSourcePack } from "@/lib/source-pack";
 
 const sources = loadSourcePack();
 
 describe("citation gate", () => {
+  it("loads every reviewed source state from the canonical pack", () => {
+    expect(sources.filter(isReviewedSource).map((source) => source.id)).toEqual(
+      [
+        "S1",
+        "S2",
+        "S3",
+        "S4",
+        "S5",
+        "S6",
+        "S7",
+        "S8",
+        "S9",
+        "S10",
+        "S11",
+        "S12",
+        "S13",
+        "S14",
+      ],
+    );
+    expect(sources.every(isReviewedSource)).toBe(true);
+  });
+
   it("rejects a substantive claim without a legal source", () => {
     expect(() =>
       validateClaim(
@@ -46,13 +68,28 @@ describe("citation gate", () => {
   });
 
   it("rejects authoritative use of a pending source", () => {
+    const pendingSources = sources.map((source) =>
+      source.id === "S3"
+        ? { ...source, humanReviewStatus: "pending" as const }
+        : source,
+    );
     expect(() =>
       validateClaim(
-        { id: "pending", text: "Claim", sourceIds: ["S1"] },
-        sources,
+        { id: "pending", text: "Claim", sourceIds: ["S3"] },
+        pendingSources,
         { substantive: true, authoritative: true },
       ),
     ).toThrow(/cannot be authoritative/);
+  });
+
+  it("accepts authoritative use of a reviewed source", () => {
+    expect(
+      validateClaim(
+        { id: "reviewed", text: "Claim", sourceIds: ["S1"] },
+        sources,
+        { substantive: true, authoritative: true },
+      ),
+    ).toBe(true);
   });
 
   it("rejects Likely applicable without a valid source", () => {

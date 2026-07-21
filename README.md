@@ -165,7 +165,7 @@ data/rules/rules.json
 docs/SOURCE_REVIEW.md
 ```
 
-All fourteen sources currently have `status: found` and `humanReviewStatus: pending`. The application therefore displays `Pending human review` and does not represent any source-backed result as reviewed, verified, authoritative, or final. A qualified reviewer must complete `docs/SOURCE_REVIEW.md` and explicitly update the canonical status fields before that can change.
+All fourteen sources currently have `status: found` and `humanReviewStatus: reviewed`. S3 and S12 received corrected `confirms` wording and were re-checked before their review status changed. The citation gate allows reviewed sources to support non-draft statuses where the rule permits it, while unavailable or synthetically pending-source paths remain covered by tests. Reviewed research sources still do not turn TaxGraph output into a final tax opinion.
 
 ## VIES: live vs fixture
 
@@ -248,7 +248,7 @@ Current verified local result:
 - Prettier: passed.
 - ESLint: passed.
 - TypeScript: passed.
-- Vitest: 63 tests passed in 13 test files.
+- Vitest: 67 tests passed in 13 test files.
 - Next.js production build: passed with static `/` and dynamic `/api/analyze`, `/api/explain`, and `/api/vies` routes.
 - API integration: both routes returned the expected `200/200/429` or `400/400/429` sequence under a two-request test limit; live VIES returned a masked `invalid` result for a synthetic number and a forced endpoint mismatch returned safe `unavailable`.
 - Live GPT integration: France B2C, Germany B2B and free input returned HTTP 200 in live normalization mode; each produced multiple service components and typed missing-fact questions within the 6,000-token per-call ceiling.
@@ -296,7 +296,7 @@ See `docs/DECISIONS.md` and `docs/BUILD_LOG.md`.
 
 TaxGraph does not promise the lowest tax, recommend hiding income or ownership, suggest sham entities or fabricated expenses, support evasion, generate a final personalized tax opinion, file a return, guarantee compliance, or predict enforcement.
 
-The source pack is research material pending qualified human review. Model output can contain factual classification mistakes despite schema adherence. VIES availability and a valid VAT ID do not alone prove every B2B condition. Single/composite supply treatment, fixed establishments, software-rights classification, withholding procedure, and all special rules outside R1–R12 remain professional-review matters.
+The source pack records all fourteen sources as reviewed. Model output can contain factual classification mistakes despite schema adherence. VIES availability and a valid VAT ID do not alone prove every B2B condition. Single/composite supply treatment, fixed establishments, software-rights classification, withholding procedure, and all special rules outside R1–R12 remain professional-review matters.
 
 ### Known implementation limitations at submission
 
