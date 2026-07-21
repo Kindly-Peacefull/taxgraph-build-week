@@ -437,6 +437,7 @@ main {
 }
 .workspace-badges > span,
 .pending-chip,
+.reviewed-chip,
 .count-chip {
   padding: 6px 9px;
   border: 1px solid var(--line-dark);
@@ -452,6 +453,11 @@ main {
   color: #79571e !important;
   background: var(--amber-soft);
   border-color: #e0c991 !important;
+}
+.reviewed-chip {
+  color: #245444 !important;
+  background: var(--mint);
+  border-color: #b2d1c4 !important;
 }
 .count-chip {
   background: #eef0eb;
@@ -1679,6 +1685,11 @@ footer {
     font-size: 7pt;
     font-weight: 800;
     text-transform: uppercase;
+  }
+  .brief-review-state.reviewed {
+    border-color: #8fb9a9;
+    color: #245444;
+    background: #e2f0e9;
   }
   .brief-section {
     margin-top: 7mm;

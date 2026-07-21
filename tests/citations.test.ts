@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   canonicalizeQuote,
+  summarizeSourceReview,
   validateClaim,
   validateRenderedQuote,
   validateTouchpointClaims,
@@ -31,6 +32,19 @@ describe("citation gate", () => {
       ],
     );
     expect(sources.every(isReviewedSource)).toBe(true);
+    expect(summarizeSourceReview(sources)).toEqual({
+      state: "reviewed",
+      label: "Sources reviewed · non-binding",
+    });
+    expect(
+      summarizeSourceReview(
+        sources.map((source) =>
+          source.id === "S3"
+            ? { ...source, humanReviewStatus: "pending" as const }
+            : source,
+        ),
+      ),
+    ).toEqual({ state: "pending", label: "Pending source review" });
   });
 
   it("rejects a substantive claim without a legal source", () => {

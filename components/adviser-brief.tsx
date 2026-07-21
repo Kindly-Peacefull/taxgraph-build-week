@@ -3,7 +3,10 @@ import type {
   FactProvenance,
   ServiceComponent,
 } from "@/lib/domain";
-import { validateTouchpointClaims } from "@/lib/citations";
+import {
+  summarizeSourceReview,
+  validateTouchpointClaims,
+} from "@/lib/citations";
 import {
   buildNarrativeInput,
   narrativeInputSourceIds,
@@ -95,6 +98,7 @@ export function AdviserBrief({
     timeZone: "UTC",
   });
   const narrativeOffset = analysis.narrativeSummary ? 1 : 0;
+  const sourceReview = summarizeSourceReview(analysis.sourceReferences);
 
   return (
     <article className="adviser-brief" aria-label="TaxGraph Adviser Brief">
@@ -119,7 +123,11 @@ export function AdviserBrief({
             <dd>{scenarioLabel}</dd>
           </div>
         </dl>
-        <p className="brief-review-state">Pending human review</p>
+        <p
+          className={`brief-review-state ${sourceReview.state === "reviewed" ? "reviewed" : ""}`}
+        >
+          {sourceReview.label}
+        </p>
       </header>
 
       <section className="brief-section">

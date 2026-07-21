@@ -54,6 +54,8 @@ describe("adviser brief", () => {
 
     expect(html).toContain("This brief is not a tax opinion");
     expect(html).toContain("Source register");
+    expect(html).toContain("Sources reviewed · non-binding");
+    expect(html).not.toContain("Pending human review");
     for (const source of fixtures[0].analysis.sourceReferences) {
       expect(html).toContain(source.id);
       expect(html).toContain(source.title);
