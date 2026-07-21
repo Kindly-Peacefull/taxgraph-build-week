@@ -16,6 +16,7 @@ import {
   AnalyzeRateLimitError,
   readAnalyzeResponse,
 } from "@/lib/analyze-client";
+import { summarizeSourceReview } from "@/lib/citations";
 import { compareAnalyses } from "@/lib/diff";
 import { evaluateTransaction } from "@/lib/engine";
 import {
@@ -600,6 +601,7 @@ function Overview({
 }) {
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const transaction = analysis.normalizedTransaction;
+  const sourceReview = summarizeSourceReview(analysis.sourceReferences);
   return (
     <div className="tab-stack">
       <section className="summary-grid">
@@ -709,7 +711,15 @@ function Overview({
             <span className="eyebrow">Transaction flow</span>
             <h3>One commercial package, several analytical signals</h3>
           </div>
-          <span className="pending-chip">Pending human review</span>
+          <span
+            className={
+              sourceReview.state === "reviewed"
+                ? "reviewed-chip"
+                : "pending-chip"
+            }
+          >
+            {sourceReview.label}
+          </span>
         </div>
         <FlowDiagram analysis={analysis} />
       </section>
@@ -1271,6 +1281,7 @@ export function TaxGraphApp() {
     () => new Set(rerunDiff?.changedTouchpoints.map((item) => item.id) ?? []),
     [rerunDiff],
   );
+  const sourceReview = summarizeSourceReview(analysis.sourceReferences);
 
   useEffect(() => {
     if (!analyzing) return;
@@ -1488,7 +1499,15 @@ export function TaxGraphApp() {
                     ? "Demo fixture"
                     : "Live analysis"}
                 </span>
-                <span className="pending-chip">Pending human review</span>
+                <span
+                  className={
+                    sourceReview.state === "reviewed"
+                      ? "reviewed-chip"
+                      : "pending-chip"
+                  }
+                >
+                  {sourceReview.label}
+                </span>
               </div>
             </div>
           </div>
@@ -1545,9 +1564,7 @@ export function TaxGraphApp() {
 
       <footer>
         <span>TaxGraph · OpenAI Build Week 2026 · Work & Productivity</span>
-        <span>
-          R1–R12 only · No final tax advice · Sources pending human review
-        </span>
+        <span>R1–R12 only · No final tax advice · {sourceReview.label}</span>
       </footer>
       <AdviserBrief
         analysis={analysis}

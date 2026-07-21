@@ -29,6 +29,19 @@ export function canonicalizeQuote(value: string) {
     .trim();
 }
 
+export function summarizeSourceReview(sources: SourceReference[]) {
+  if (sources.some((source) => source.status !== "found")) {
+    return { state: "unavailable" as const, label: "Source unavailable" };
+  }
+  if (sources.length > 0 && sources.every(isReviewedSource)) {
+    return {
+      state: "reviewed" as const,
+      label: "Sources reviewed · non-binding",
+    };
+  }
+  return { state: "pending" as const, label: "Pending source review" };
+}
+
 export function validateRenderedQuote(
   renderedQuote: string,
   source: SourceReference,
